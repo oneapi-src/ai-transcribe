@@ -1,0 +1,1292 @@
+diff --git a/examples/speech_recognition/kaldi/add-self-loop-simple.cc b/examples/speech_recognition/kaldi/add-self-loop-simple.cc
+index e18fb62d..6d73ee06 100644
+--- a/examples/speech_recognition/kaldi/add-self-loop-simple.cc
++++ b/examples/speech_recognition/kaldi/add-self-loop-simple.cc
+@@ -1,9 +1,9 @@
+ /*
+- * Copyright (c) Facebook, Inc. and its affiliates.
+- *
+- * This source code is licensed under the MIT license found in the
+- * LICENSE file in the root directory of this source tree.
+- */
++* Copyright (c) Facebook, Inc. and its affiliates.
++*
++* This source code is licensed under the MIT license found in the
++* LICENSE file in the root directory of this source tree.
++*/
+ 
+ #include <iostream>
+ #include "fstext/fstext-lib.h" // @manual
+@@ -28,7 +28,7 @@ int32 AddSelfLoopsSimple(fst::StdVectorFst* fst) {
+   KALDI_LOG << "There are " << num_states_before
+             << " states in the original FST; "
+             << " after MakePrecedingInputSymbolsSame, there are "
+-            << num_states_after << " states " << std::endl;
++            << num_states_after << " states ";
+ 
+   auto weight_one = fst::StdArc::Weight::One();
+ 
+@@ -82,13 +82,13 @@ int main(int argc, char** argv) {
+   auto fst = fst::ReadFstKaldi(input);
+   auto num_states = fst->NumStates();
+   KALDI_LOG << "Loading FST from " << input << " with " << num_states
+-            << " states." << std::endl;
++            << " states.";
+ 
+   int32 num_arc_added = AddSelfLoopsSimple(fst);
+-  KALDI_LOG << "Adding " << num_arc_added << " self-loop arcs " << std::endl;
++  KALDI_LOG << "Adding " << num_arc_added << " self-loop arcs ";
+ 
+   fst::WriteFstKaldi(*fst, std::string(output));
+-  KALDI_LOG << "Writing FST to " << output << std::endl;
++  KALDI_LOG << "Writing FST to " << output;
+ 
+   delete fst;
+ }
+diff --git a/examples/speech_recognition/w2l_decoder.py b/examples/speech_recognition/w2l_decoder.py
+index fbf2d352..03c1d867 100644
+--- a/examples/speech_recognition/w2l_decoder.py
++++ b/examples/speech_recognition/w2l_decoder.py
+@@ -24,20 +24,19 @@ from fairseq.utils import apply_to_sample
+ from omegaconf import open_dict
+ from fairseq.dataclass.utils import convert_namespace_to_omegaconf
+ 
+-
+ try:
+-    from flashlight.lib.text.dictionary import create_word_dict, load_words
++    #from flashlight.lib.text.dictionary import create_word_dict, load_words
+     from flashlight.lib.sequence.criterion import CpuViterbiPath, get_data_ptr_as_bytes
+-    from flashlight.lib.text.decoder import (
+-        CriterionType,
+-        LexiconDecoderOptions,
+-        KenLM,
+-        LM,
+-        LMState,
+-        SmearingMode,
+-        Trie,
+-        LexiconDecoder,
+-    )
++    #from flashlight.lib.text.decoder import (
++    #    CriterionType,
++    #    LexiconDecoderOptions,
++    #    KenLM,
++    #    LM,
++    #    LMState,
++    #    SmearingMode,
++    #    Trie,
++    #    LexiconDecoder,
++    #)
+ except:
+     warnings.warn(
+         "flashlight python bindings are required to use this functionality. Please install from https://github.com/facebookresearch/flashlight/tree/master/bindings/python"
+@@ -53,7 +52,7 @@ class W2lDecoder(object):
+         self.nbest = args.nbest
+ 
+         # criterion-specific init
+-        self.criterion_type = CriterionType.CTC
++        #self.criterion_type = CriterionType.CTC
+         self.blank = (
+             tgt_dict.index("<ctc_blank>")
+             if "<ctc_blank>" in tgt_dict.indices
+@@ -73,7 +72,7 @@ class W2lDecoder(object):
+         # separately, but SequenceGenerator directly calls model.encoder
+         encoder_input = {
+             k: v for k, v in sample["net_input"].items() if k != "prev_output_tokens"
+-        }
++	 }
+         emissions = self.get_emissions(models, encoder_input)
+         return self.decode(emissions)
+ 
+@@ -81,10 +80,15 @@ class W2lDecoder(object):
+         """Run encoder and normalize emissions"""
+         model = models[0]
+         encoder_out = model(**encoder_input)
+-        if hasattr(model, "get_logits"):
++        if len(models) == 2: # INT8 Model
++            logits = encoder_out["logits"]
++            padding = encoder_out["padding_mask"]
++            emissions = logits.transpose(0, 1)
++        elif hasattr(model, "get_logits"):
+             emissions = model.get_logits(encoder_out) # no need to normalize emissions
+         else:
+             emissions = model.get_normalized_probs(encoder_out, log_probs=True)
++        
+         return emissions.transpose(0, 1).float().cpu().contiguous()
+ 
+     def get_tokens(self, idxs):
+@@ -197,12 +201,10 @@ class W2lKenLMDecoder(W2lDecoder):
+ 
+     def get_timesteps(self, token_idxs: List[int]) -> List[int]:
+         """Returns frame numbers corresponding to every non-blank token.
+-
+         Parameters
+         ----------
+         token_idxs : List[int]
+             IDs of decoded tokens.
+-
+         Returns
+         -------
+         List[int]
+@@ -243,130 +245,128 @@ class W2lKenLMDecoder(W2lDecoder):
+ FairseqLMState = namedtuple("FairseqLMState", ["prefix", "incremental_state", "probs"])
+ 
+ 
+-class FairseqLM(LM):
+-    def __init__(self, dictionary, model):
+-        LM.__init__(self)
+-        self.dictionary = dictionary
+-        self.model = model
+-        self.unk = self.dictionary.unk()
+-
+-        self.save_incremental = False  # this currently does not work properly
+-        self.max_cache = 20_000
+-
+-        model.cuda()
+-        model.eval()
+-        model.make_generation_fast_()
+-
+-        self.states = {}
+-        self.stateq = deque()
+-
+-    def start(self, start_with_nothing):
+-        state = LMState()
+-        prefix = torch.LongTensor([[self.dictionary.eos()]])
+-        incremental_state = {} if self.save_incremental else None
+-        with torch.no_grad():
+-            res = self.model(prefix.cuda(), incremental_state=incremental_state)
+-            probs = self.model.get_normalized_probs(res, log_probs=True, sample=None)
+-
+-        if incremental_state is not None:
+-            incremental_state = apply_to_sample(lambda x: x.cpu(), incremental_state)
+-        self.states[state] = FairseqLMState(
+-            prefix.numpy(), incremental_state, probs[0, -1].cpu().numpy()
+-        )
+-        self.stateq.append(state)
+-
+-        return state
+-
+-    def score(self, state: LMState, token_index: int, no_cache: bool = False):
+-        """
+-        Evaluate language model based on the current lm state and new word
+-        Parameters:
+-        -----------
+-        state: current lm state
+-        token_index: index of the word
+-                     (can be lexicon index then you should store inside LM the
+-                      mapping between indices of lexicon and lm, or lm index of a word)
+-
+-        Returns:
+-        --------
+-        (LMState, float): pair of (new state, score for the current word)
+-        """
+-        curr_state = self.states[state]
+-
+-        def trim_cache(targ_size):
+-            while len(self.stateq) > targ_size:
+-                rem_k = self.stateq.popleft()
+-                rem_st = self.states[rem_k]
+-                rem_st = FairseqLMState(rem_st.prefix, None, None)
+-                self.states[rem_k] = rem_st
+-
+-        if curr_state.probs is None:
+-            new_incremental_state = (
+-                curr_state.incremental_state.copy()
+-                if curr_state.incremental_state is not None
+-                else None
+-            )
+-            with torch.no_grad():
+-                if new_incremental_state is not None:
+-                    new_incremental_state = apply_to_sample(
+-                        lambda x: x.cuda(), new_incremental_state
+-                    )
+-                elif self.save_incremental:
+-                    new_incremental_state = {}
+-
+-                res = self.model(
+-                    torch.from_numpy(curr_state.prefix).cuda(),
+-                    incremental_state=new_incremental_state,
+-                )
+-                probs = self.model.get_normalized_probs(
+-                    res, log_probs=True, sample=None
+-                )
+-
+-                if new_incremental_state is not None:
+-                    new_incremental_state = apply_to_sample(
+-                        lambda x: x.cpu(), new_incremental_state
+-                    )
+-
+-                curr_state = FairseqLMState(
+-                    curr_state.prefix, new_incremental_state, probs[0, -1].cpu().numpy()
+-                )
+-
+-            if not no_cache:
+-                self.states[state] = curr_state
+-                self.stateq.append(state)
+-
+-        score = curr_state.probs[token_index].item()
+-
+-        trim_cache(self.max_cache)
+-
+-        outstate = state.child(token_index)
+-        if outstate not in self.states and not no_cache:
+-            prefix = np.concatenate(
+-                [curr_state.prefix, torch.LongTensor([[token_index]])], -1
+-            )
+-            incr_state = curr_state.incremental_state
+-
+-            self.states[outstate] = FairseqLMState(prefix, incr_state, None)
+-
+-        if token_index == self.unk:
+-            score = float("-inf")
+-
+-        return outstate, score
+-
+-    def finish(self, state: LMState):
+-        """
+-        Evaluate eos for language model based on the current lm state
+-
+-        Returns:
+-        --------
+-        (LMState, float): pair of (new state, score for the current word)
+-        """
+-        return self.score(state, self.dictionary.eos())
+-
+-    def empty_cache(self):
+-        self.states = {}
+-        self.stateq = deque()
+-        gc.collect()
++# class FairseqLM(LM):
++#     def __init__(self, dictionary, model):
++#         LM.__init__(self)
++#         self.dictionary = dictionary
++#         self.model = model
++#         self.unk = self.dictionary.unk()
++
++#         self.save_incremental = False  # this currently does not work properly
++#         self.max_cache = 20_000
++
++#         model.cuda()
++#         model.eval()
++#         model.make_generation_fast_()
++
++#         self.states = {}
++#         self.stateq = deque()
++
++#     def start(self, start_with_nothing):
++#         state = LMState()
++#         prefix = torch.LongTensor([[self.dictionary.eos()]])
++#         incremental_state = {} if self.save_incremental else None
++#         with torch.no_grad():
++#             res = self.model(prefix.cuda(), incremental_state=incremental_state)
++#             probs = self.model.get_normalized_probs(res, log_probs=True, sample=None)
++
++#         if incremental_state is not None:
++#             incremental_state = apply_to_sample(lambda x: x.cpu(), incremental_state)
++#         self.states[state] = FairseqLMState(
++#             prefix.numpy(), incremental_state, probs[0, -1].cpu().numpy()
++#         )
++#         self.stateq.append(state)
++
++#         return state
++
++#     def score(self, state: LMState, token_index: int, no_cache: bool = False):
++#         """
++#         Evaluate language model based on the current lm state and new word
++#         Parameters:
++#         -----------
++#         state: current lm state
++#         token_index: index of the word
++#                      (can be lexicon index then you should store inside LM the
++#                       mapping between indices of lexicon and lm, or lm index of a word)
++#         Returns:
++#         --------
++#         (LMState, float): pair of (new state, score for the current word)
++#         """
++#         curr_state = self.states[state]
++
++#         def trim_cache(targ_size):
++#             while len(self.stateq) > targ_size:
++#                 rem_k = self.stateq.popleft()
++#                 rem_st = self.states[rem_k]
++#                 rem_st = FairseqLMState(rem_st.prefix, None, None)
++#                 self.states[rem_k] = rem_st
++
++#         if curr_state.probs is None:
++#             new_incremental_state = (
++#                 curr_state.incremental_state.copy()
++#                 if curr_state.incremental_state is not None
++#                 else None
++#             )
++#             with torch.no_grad():
++#                 if new_incremental_state is not None:
++#                     new_incremental_state = apply_to_sample(
++#                         lambda x: x.cuda(), new_incremental_state
++#                     )
++#                 elif self.save_incremental:
++#                     new_incremental_state = {}
++
++#                 res = self.model(
++#                     torch.from_numpy(curr_state.prefix).cuda(),
++#                     incremental_state=new_incremental_state,
++#                 )
++#                 probs = self.model.get_normalized_probs(
++#                     res, log_probs=True, sample=None
++#                 )
++
++#                 if new_incremental_state is not None:
++#                     new_incremental_state = apply_to_sample(
++#                         lambda x: x.cpu(), new_incremental_state
++#                     )
++
++#                 curr_state = FairseqLMState(
++#                     curr_state.prefix, new_incremental_state, probs[0, -1].cpu().numpy()
++#                 )
++
++#             if not no_cache:
++#                 self.states[state] = curr_state
++#                 self.stateq.append(state)
++
++#         score = curr_state.probs[token_index].item()
++
++#         trim_cache(self.max_cache)
++
++#         outstate = state.child(token_index)
++#         if outstate not in self.states and not no_cache:
++#             prefix = np.concatenate(
++#                 [curr_state.prefix, torch.LongTensor([[token_index]])], -1
++#             )
++#             incr_state = curr_state.incremental_state
++
++#             self.states[outstate] = FairseqLMState(prefix, incr_state, None)
++
++#         if token_index == self.unk:
++#             score = float("-inf")
++
++#         return outstate, score
++
++#     def finish(self, state: LMState):
++#         """
++#         Evaluate eos for language model based on the current lm state
++#         Returns:
++#         --------
++#         (LMState, float): pair of (new state, score for the current word)
++#         """
++#         return self.score(state, self.dictionary.eos())
++
++#     def empty_cache(self):
++#         self.states = {}
++#         self.stateq = deque()
++#         gc.collect()
+ 
+ 
+ class W2lFairseqLMDecoder(W2lDecoder):
+diff --git a/examples/wav2vec/unsupervised/config/gan/w2vu.yaml b/examples/wav2vec/unsupervised/config/gan/w2vu.yaml
+index 74f1829d..160a46f6 100644
+--- a/examples/wav2vec/unsupervised/config/gan/w2vu.yaml
++++ b/examples/wav2vec/unsupervised/config/gan/w2vu.yaml
+@@ -2,17 +2,20 @@
+ 
+ common:
+   fp16: false
+-  fp16_no_flatten_grads: true
++  fp16_no_flatten_grads: false
+   log_format: json
+   log_interval: 100
+   tensorboard_logdir: tb
+   reset_logging: false
+   suppress_crashes: false
++  model_parallel_size: 1
++  cpu: true
++  #intel: false
+ 
+ checkpoint:
+-  save_interval: 1000
++  save_interval: 2
+   save_interval_updates: 1000
+-  no_epoch_checkpoints: true
++  no_epoch_checkpoints: false
+   best_checkpoint_metric: weighted_lm_ppl
+   save_dir: .
+ 
+@@ -47,7 +50,8 @@ criterion:
+     - code_ppl
+ 
+ optimization:
+-  max_update: 150000
++  max_update: 950
++  max_epoch : 50
+   clip_norm: 5.0
+   lr: [0]
+ 
+@@ -62,7 +66,7 @@ optimizer:
+         adam_betas: [0.5,0.98]
+         adam_eps: 1e-06
+         weight_decay: 0
+-        amsgrad: false
++        #amsgrad: false
+       lr_scheduler:
+         _name: fixed
+         warmup_updates: 0
+@@ -74,7 +78,7 @@ optimizer:
+         adam_betas: [0.5,0.98]
+         adam_eps: 1e-06
+         weight_decay: 0.0001
+-        amsgrad: false
++        #amsgrad: 0.999
+       lr_scheduler:
+         _name: fixed
+         warmup_updates: 0
+diff --git a/examples/wav2vec/unsupervised/config/generate/viterbi.yaml b/examples/wav2vec/unsupervised/config/generate/viterbi.yaml
+index 9c88beeb..94bb113a 100644
+--- a/examples/wav2vec/unsupervised/config/generate/viterbi.yaml
++++ b/examples/wav2vec/unsupervised/config/generate/viterbi.yaml
+@@ -1,8 +1,6 @@
+-# @package _group_
+-
+ fairseq:
+   task:
+-    _name: unpaired_audio_text
++    _name:  unpaired_audio_text
+     labels: phn
+     data: ???
+     sort_by_length: false
+@@ -10,12 +8,16 @@ fairseq:
+     text_data: ''
+ 
+   common_eval:
+-    path: ???
++    #path: ???
+     quiet: true
+ 
+   dataset:
+     gen_subset: valid
+     batch_size: 1
++    max_tokens: 130695
++
++  common:
++    cpu: true
+ 
+ w2l_decoder: VITERBI
+ post_process: silence
+diff --git a/examples/wav2vec/unsupervised/scripts/apply_pca.py b/examples/wav2vec/unsupervised/scripts/apply_pca.py
+index 10ad6ce4..66677d9d 100644
+--- a/examples/wav2vec/unsupervised/scripts/apply_pca.py
++++ b/examples/wav2vec/unsupervised/scripts/apply_pca.py
+@@ -42,8 +42,8 @@ def main():
+     print(f"data path: {data_poth}")
+ 
+     features = np.load(data_poth + ".npy", mmap_mode="r")
+-    pca_A = torch.from_numpy(np.load(args.pca_path + "_A.npy")).cuda()
+-    pca_b = torch.from_numpy(np.load(args.pca_path + "_b.npy")).cuda()
++    pca_A = torch.from_numpy(np.load(args.pca_path + "_A.npy")).cpu()
++    pca_b = torch.from_numpy(np.load(args.pca_path + "_b.npy")).cpu()
+ 
+     os.makedirs(args.save_dir, exist_ok=True)
+     save_path = osp.join(args.save_dir, args.split)
+@@ -67,7 +67,7 @@ def main():
+         for b in tqdm.trange(batches):
+             start = b * args.batch_size
+             end = start + args.batch_size
+-            x = torch.from_numpy(features[start:end]).cuda()
++            x = torch.from_numpy(features[start:end]).cpu()
+             x = torch.matmul(x, pca_A) + pca_b
+             npaa.append(x.cpu().numpy())
+ 
+diff --git a/examples/wav2vec/unsupervised/scripts/mean_pool.py b/examples/wav2vec/unsupervised/scripts/mean_pool.py
+index 4eea048e..7b60f538 100644
+--- a/examples/wav2vec/unsupervised/scripts/mean_pool.py
++++ b/examples/wav2vec/unsupervised/scripts/mean_pool.py
+@@ -75,7 +75,7 @@ def main():
+                 end = start + length
+                 feats = features[start:end]
+                 start += length
+-                x = torch.from_numpy(feats).cuda()
++                x = torch.from_numpy(feats).cpu()
+                 target_num = math.ceil(length * args.subsample_rate)
+                 rem = length % target_num
+ 
+diff --git a/examples/wav2vec/unsupervised/scripts/prepare_audio.sh b/examples/wav2vec/unsupervised/scripts/prepare_audio.sh
+index 013f7a9b..f5ab9320 100644
+--- a/examples/wav2vec/unsupervised/scripts/prepare_audio.sh
++++ b/examples/wav2vec/unsupervised/scripts/prepare_audio.sh
+@@ -30,14 +30,14 @@ train_split=train
+ valid_split=valid
+ test_split=test
+ 
+-all_splits=($train_split)
++all_splits=$train_split
+ 
+ if [[ -f "$source_dir/valid.tsv" ]]; then
+-    all_splits+=('valid')
++    all_splits+=' valid'
+ fi
+ 
+ if [[ -f "$source_dir/test.tsv" ]]; then
+-    all_splits+=('test')
++    all_splits+=' test'
+ fi
+ 
+ echo "processing splits: $all_splits"
+@@ -53,12 +53,13 @@ cp $source_dir/dict* $tgt_dir
+ setopt shwordsplit
+ 
+ for split in $all_splits; do
++  echo $split
+   python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/wav2vec_extract_features.py $source_dir --split $split \
+   --save-dir $tgt_dir --checkpoint $model --layer $layer
+ done
+ 
+ python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/wav2vec_cluster_faiss.py $tgt_dir/${train_split}.tsv \
+---checkpoint $model --save-dir $tgt_dir -f "CLUS128" --sample-pct 1.0
++--checkpoint $model --save-dir $tgt_dir -f "CLUS128" --sample-pct 0
+ 
+ for split in $all_splits; do
+   python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/wav2vec_apply_cluster_faiss.py $tgt_dir \
+diff --git a/examples/wav2vec/unsupervised/scripts/prepare_text.sh b/examples/wav2vec/unsupervised/scripts/prepare_text.sh
+index 1caf13cb..a01b60fd 100644
+--- a/examples/wav2vec/unsupervised/scripts/prepare_text.sh
++++ b/examples/wav2vec/unsupervised/scripts/prepare_text.sh
+@@ -48,35 +48,37 @@ python $FAIRSEQ_ROOT/fairseq_cli/preprocess.py --dataset-impl mmap --trainpref $
+ cut -f1 -d' ' $target_dir/dict.txt | grep -v -x '[[:punct:]]*' | grep -Pv '\d\d\d\d\d+' >! $target_dir/words.txt
+ 
+ 
++
+ if [ -z "$ESPEAK_PATH" ]; then
+   python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/g2p_wrd_to_phn.py --compact < $target_dir/words.txt > $target_dir/phones.txt
++
+ else
+   # echoing 1 into corpus will prevent the mismatch lines between lexicon and phones in case the phonemizer fails
+   one=$(echo "1" | PHONEMIZER_ESPEAK_PATH=$ESPEAK_PATH phonemize -p ' ' -w '' -l $ph_lg --language-switch remove-flags)
+   sed 's/$/ 1/' $target_dir/words.txt | PHONEMIZER_ESPEAK_PATH=$ESPEAK_PATH phonemize -o $target_dir/phones.txt -p ' ' -w '' -l $ph_lg -j 70 --language-switch remove-flags
+   echo "one is ${one}"
+   sed -i "s/${one}$//" $target_dir/phones.txt
++
+ fi
+ 
+ paste $target_dir/words.txt $target_dir/phones.txt >! $target_dir/lexicon.lst
+ 
+-python $FAIRSEQ_ROOT/fairseq_cli/preprocess.py --dataset-impl mmap --trainpref $target_dir/phones.txt --only-source --destdir $target_dir/phones --thresholdsrc $min_phones --padding-factor 1 --dict-only
+ 
++
++
++python $FAIRSEQ_ROOT/fairseq_cli/preprocess.py --dataset-impl mmap --trainpref $target_dir/phones.txt --only-source --destdir $target_dir/phones --thresholdsrc $min_phones --padding-factor 1 --dict-only
+ python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/filter_lexicon.py -d $target_dir/phones/dict.txt < $target_dir/lexicon.lst >! $target_dir/lexicon_filtered.lst
+ python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/phonemize_with_sil.py -s 0.25 --surround --lexicon $target_dir/lexicon_filtered.lst < $target_dir/lm.upper.lid.txt >! $target_dir/phones/lm.phones.filtered.txt
+ cp $target_dir/phones/dict.txt $target_dir/phones/dict.phn.txt
+-echo "<SIL> 0" >> $target_dir/phones/dict.phn.txt
+ python $FAIRSEQ_ROOT/fairseq_cli/preprocess.py --dataset-impl mmap --trainpref $target_dir/phones/lm.phones.filtered.txt --workers 70 --only-source --destdir $target_dir/phones --srcdict $target_dir/phones/dict.phn.txt
+-
+ $KENLM_ROOT/lmplz -o 4 < $target_dir/lm.upper.lid.txt --discount_fallback --prune 0 0 0 3 >! $target_dir/kenlm.wrd.o40003.arpa
+ $KENLM_ROOT/build_binary $target_dir/kenlm.wrd.o40003.arpa $target_dir/kenlm.wrd.o40003.bin
+ 
+-lg=$lg python $FAIRSEQ_ROOT/examples/speech_recognition/kaldi/kaldi_initializer.py kaldi_root=$KALDI_ROOT fst_dir=$target_dir/fst/phn_to_words_sil lm_arpa=$target_dir/kenlm.wrd.o40003.arpa wav2letter_lexicon=$target_dir/lexicon_filtered.lst data_dir=$target_dir/phones in_labels=phn "blank_symbol='<SIL>'"
++lg=$lg python $FAIRSEQ_ROOT/examples/speech_recognition/kaldi/kaldi_initializer.py kaldi_root=$KALDI_ROOT fst_dir=$target_dir/fst/phn_to_words_sil lm_arpa=$target_dir/kenlm.wrd.o40003.arpa wav2letter_lexicon=$target_dir/lexicon_filtered.lst data_dir=$target_dir/phones in_labels=phn
+ lg=$lg python $FAIRSEQ_ROOT/examples/speech_recognition/kaldi/kaldi_initializer.py kaldi_root=$KALDI_ROOT fst_dir=$target_dir/fst/phn_to_words lm_arpa=$target_dir/kenlm.wrd.o40003.arpa wav2letter_lexicon=$target_dir/lexicon_filtered.lst data_dir=$target_dir/phones in_labels=phn
+-
+ $KENLM_ROOT/lmplz -o 4 < $target_dir/phones/lm.phones.filtered.txt --discount_fallback >! $target_dir/phones/lm.phones.filtered.04.arpa
+ $KENLM_ROOT/build_binary $target_dir/phones/lm.phones.filtered.04.arpa $target_dir/phones/lm.phones.filtered.04.bin
+ $KENLM_ROOT/lmplz -o 6 < $target_dir/phones/lm.phones.filtered.txt --discount_fallback >! $target_dir/phones/lm.phones.filtered.06.arpa
+ $KENLM_ROOT/build_binary $target_dir/phones/lm.phones.filtered.06.arpa $target_dir/phones/lm.phones.filtered.06.bin
+ 
+-lg=$lg python $FAIRSEQ_ROOT/examples/speech_recognition/kaldi/kaldi_initializer.py kaldi_root=$KALDI_ROOT fst_dir=$target_dir/fst/phn_to_phn_sil lm_arpa=$target_dir/phones/lm.phones.filtered.06.arpa data_dir=$target_dir/phones in_labels=phn "blank_symbol='<SIL>'"
++lg=$lg python $FAIRSEQ_ROOT/examples/speech_recognition/kaldi/kaldi_initializer.py kaldi_root=$KALDI_ROOT fst_dir=$target_dir/fst/phn_to_phn_sil lm_arpa=$target_dir/phones/lm.phones.filtered.06.arpa data_dir=$target_dir/phones in_labels=phn
+diff --git a/examples/wav2vec/unsupervised/scripts/wav2vec_apply_cluster_faiss.py b/examples/wav2vec/unsupervised/scripts/wav2vec_apply_cluster_faiss.py
+index a5dd7ae6..befe7acf 100644
+--- a/examples/wav2vec/unsupervised/scripts/wav2vec_apply_cluster_faiss.py
++++ b/examples/wav2vec/unsupervised/scripts/wav2vec_apply_cluster_faiss.py
+@@ -77,20 +77,23 @@ def main():
+     print("Faiss Spec:", faiss_spec, file=sys.stderr)
+ 
+     if faiss_spec.pca:
+-        A = torch.from_numpy(np.load(osp.join(args.path, "pca_A.npy"))).cuda()
+-        b = torch.from_numpy(np.load(osp.join(args.path, "pca_b.npy"))).cuda()
++        #A = torch.from_numpy(np.load(osp.join(args.path, "pca_A.npy"))).cuda()
++        #b = torch.from_numpy(np.load(osp.join(args.path, "pca_b.npy"))).cuda()
++        A = torch.from_numpy(np.load(osp.join(args.path, "pca_A.npy"))).cpu()
++        b = torch.from_numpy(np.load(osp.join(args.path, "pca_b.npy"))).cpu()
+         print("Loaded PCA", file=sys.stderr)
+ 
+     centroids = np.load(osp.join(args.path, "centroids.npy"))
+     print("Loaded centroids", centroids.shape, file=sys.stderr)
+ 
+-    res = faiss.StandardGpuResources()
++    #res = faiss.StandardGpuResources()
+     index_flat = (
+         faiss.IndexFlatL2(centroids.shape[1])
+         if not faiss_spec.sphere
+         else faiss.IndexFlatIP(centroids.shape[1])
+     )
+-    faiss_index = faiss.index_cpu_to_gpu(res, 0, index_flat)
++    #faiss_index = faiss.index_cpu_to_gpu(res, 0, index_flat)
++    faiss_index = index_flat
+     faiss_index.add(centroids)
+ 
+     generator, num, root = get_iterator(args)
+diff --git a/examples/wav2vec/unsupervised/scripts/wav2vec_cluster_faiss.py b/examples/wav2vec/unsupervised/scripts/wav2vec_cluster_faiss.py
+index 632a69e9..f8b22165 100644
+--- a/examples/wav2vec/unsupervised/scripts/wav2vec_cluster_faiss.py
++++ b/examples/wav2vec/unsupervised/scripts/wav2vec_cluster_faiss.py
+@@ -71,24 +71,60 @@ def parse_faiss_specs(specs_str):
+     return specs
+ 
+ 
++# class Wav2VecFeatureReader(object):
++#     def __init__(self, cp_file, layer):
++#         state = fairseq.checkpoint_utils.load_checkpoint_to_cpu(cp_file)
++
++#         self.layer = layer
++
++#         if "cfg" in state:
++#             w2v_args = state["cfg"]
++#             task = fairseq.tasks.setup_task(w2v_args.task)
++#             model = task.build_model(w2v_args.model)
++#         else:
++#             w2v_args = state["args"]
++#             task = fairseq.tasks.setup_task(w2v_args)
++#             model = task.build_model(w2v_args)
++#         model.load_state_dict(state["model"], strict=True)
++#         model.eval()
++#         model.cpu()
++#         self.model = model
++
++#     def read_audio(self, fname):
++#         """Load an audio file and return PCM along with the sample rate"""
++#         wav, sr = sf.read(fname)
++#         assert sr == 16e3
++
++#         return wav
++
++#     def get_feats(self, loc):
++#         x = self.read_audio(loc)
++#         with torch.no_grad():
++#             #source = torch.from_numpy(x).view(1, -1).float().cuda()
++#             source = torch.from_numpy(x).view(1, -1).float()
++#             res = self.model(
++#                 source=source, mask=False, features_only=True, layer=self.layer
++#             )
++#             #print(res.shape)
++#             print(self.layer)
++#             print(len(res["layer_results"]))
++#             print(res["layer_results"])
++#             print(len(res["layer_results"][self.layer]))
++#             print(res["layer_results"][self.layer])
++#             return res["layer_results"][self.layer][0].squeeze(1)
++
+ class Wav2VecFeatureReader(object):
+     def __init__(self, cp_file, layer):
+-        state = fairseq.checkpoint_utils.load_checkpoint_to_cpu(cp_file)
+-
+-        self.layer = layer
+-
+-        if "cfg" in state:
+-            w2v_args = state["cfg"]
+-            task = fairseq.tasks.setup_task(w2v_args.task)
+-            model = task.build_model(w2v_args.model)
+-        else:
+-            w2v_args = state["args"]
+-            task = fairseq.tasks.setup_task(w2v_args)
+-            model = task.build_model(w2v_args)
+-        model.load_state_dict(state["model"], strict=True)
++        model, cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task(
++            [cp_file]
++        )
++        model = model[0]
+         model.eval()
+-        model.cuda()
++        #model.cuda()
++        #model.cpu()
+         self.model = model
++        self.task = task
++        self.layer = layer
+ 
+     def read_audio(self, fname):
+         """Load an audio file and return PCM along with the sample rate"""
+@@ -98,14 +134,19 @@ class Wav2VecFeatureReader(object):
+         return wav
+ 
+     def get_feats(self, loc):
++        #print(loc)
+         x = self.read_audio(loc)
+         with torch.no_grad():
+-            source = torch.from_numpy(x).view(1, -1).float().cuda()
+-            res = self.model(
+-                source=source, mask=False, features_only=True, layer=self.layer
+-            )
+-            return res["layer_results"][self.layer][0].squeeze(1)
++            #source = torch.from_numpy(x).float().cuda()
++            source = torch.from_numpy(x).float()
++            if self.task.cfg.normalize:
++                assert source.dim() == 1, source.dim()
++                with torch.no_grad():
++                    source = F.layer_norm(source, source.shape)
++            source = source.view(1, -1)
+ 
++            m_res = self.model(source=source, mask=False, features_only=True, layer=self.layer)
++            return m_res["x"].squeeze(0).cpu()
+ 
+ def get_iterator(args):
+     with open(args.data, "r") as fp:
+@@ -155,7 +196,7 @@ def main():
+         # np.save(feat_path, feats)
+ 
+         gc.collect()
+-        torch.cuda.empty_cache()
++        #torch.cuda.empty_cache()
+ 
+     reload = False
+     for spec in faiss_specs:
+diff --git a/examples/wav2vec/unsupervised/scripts/wav2vec_extract_features.py b/examples/wav2vec/unsupervised/scripts/wav2vec_extract_features.py
+index b07e274d..e216ecbd 100644
+--- a/examples/wav2vec/unsupervised/scripts/wav2vec_extract_features.py
++++ b/examples/wav2vec/unsupervised/scripts/wav2vec_extract_features.py
+@@ -40,7 +40,8 @@ class Wav2VecFeatureReader(object):
+         )
+         model = model[0]
+         model.eval()
+-        model.cuda()
++        #model.cuda()
++        #model.cpu()
+         self.model = model
+         self.task = task
+         self.layer = layer
+@@ -53,9 +54,11 @@ class Wav2VecFeatureReader(object):
+         return wav
+ 
+     def get_feats(self, loc):
++        #print(loc)
+         x = self.read_audio(loc)
+         with torch.no_grad():
+-            source = torch.from_numpy(x).float().cuda()
++            #source = torch.from_numpy(x).float().cuda()
++            source = torch.from_numpy(x).float()
+             if self.task.cfg.normalize:
+                 assert source.dim() == 1, source.dim()
+                 with torch.no_grad():
+@@ -73,6 +76,8 @@ def get_iterator(args):
+         files = [osp.join(root, line.split("\t")[0]) for line in lines if len(line) > 0]
+ 
+         num = len(files)
++        print(args.checkpoint)
++        print(args.layer)
+         reader = Wav2VecFeatureReader(args.checkpoint, args.layer)
+ 
+         def iterate():
+diff --git a/examples/wav2vec/unsupervised/w2vu_generate.py b/examples/wav2vec/unsupervised/w2vu_generate.py
+index fca0c96f..8f70d602 100644
+--- a/examples/wav2vec/unsupervised/w2vu_generate.py
++++ b/examples/wav2vec/unsupervised/w2vu_generate.py
+@@ -7,7 +7,8 @@
+ """
+ Run inference for pre-processed data with a trained model.
+ """
+-
++# pylint: disable=C0301 E0401 C0103 I1101 R0913 R1708
++import time
+ import ast
+ from collections import namedtuple
+ from dataclasses import dataclass, field
+@@ -20,7 +21,7 @@ import os
+ from omegaconf import OmegaConf
+ from typing import Optional
+ import sys
+-
++import numpy as np
+ import editdistance
+ import torch
+ 
+@@ -38,7 +39,6 @@ logging.root.setLevel(logging.INFO)
+ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+ logger = logging.getLogger(__name__)
+ 
+-
+ class DecoderType(Enum):
+     VITERBI = auto()
+     KENLM = auto()
+@@ -215,7 +215,6 @@ def process_predictions(
+             if res_files is not None:
+                 to_write[res_files["ref.units"]] = tgt_pieces
+                 to_write[res_files["ref.words"]] = tgt_words
+-
+         if not cfg.fairseq.common_eval.quiet:
+             logger.info(f"HYPO {i}:" + hyp_words)
+             if tgt_words:
+@@ -232,7 +231,6 @@ def process_predictions(
+ 
+         hyp_words_arr = hyp_words.split()
+         tgt_words_arr = tgt_words.split()
+-
+         retval.append(
+             (
+                 editdistance.eval(hyp_words_arr, tgt_words_arr),
+@@ -292,12 +290,13 @@ def optimize_models(cfg: UnsupGenerateConfig, use_cuda, models):
+     """Optimize ensemble for generation"""
+     for model in models:
+         model.eval()
++        #Converting torch model channel last format
++        model = model.to(memory_format=torch.channels_last)
+         if cfg.fairseq.common.fp16:
+             model.half()
+         if use_cuda:
+             model.cuda()
+ 
+-
+ GenResult = namedtuple(
+     "GenResult",
+     [
+@@ -386,7 +385,6 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
+     num_feats = 0
+     all_hyp_pieces = []
+     all_hyp_words = []
+-
+     num_symbols = (
+         len([s for s in tgt_dict.symbols if not s.startswith("madeup")])
+         - tgt_dict.nspecial
+@@ -432,7 +430,8 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
+         start = 0
+         end = len(itr)
+         logger.info("Finished extracting features")
+-
++    inference_start=time.time()
++    total_infer_time = 0
+     with progress_bar.build_progress_bar(cfg.fairseq.common, itr) as t:
+         for i, sample in enumerate(t):
+             if i < start or i >= end:
+@@ -444,10 +443,11 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
+             else:
+                 if "net_input" not in sample:
+                     continue
+-
++                s_time = time.time()
+                 hypos, num_feats = gen_hypos(
+                     generator, models, num_feats, sample, task, use_cuda
+                 )
++                total_infer_time  = total_infer_time + (time.time()-s_time)
+ 
+             for i, sample_id in enumerate(sample["id"].tolist()):
+                 if targets is not None:
+@@ -490,7 +490,8 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
+             num_sentences += (
+                 sample["nsentences"] if "nsentences" in sample else sample["id"].numel()
+             )
+-
++    inference_end=time.time()
++    # print("total_inference_time::::::",total_infer_time)
+     lm_score_sum = 0
+     if kenlm is not None:
+ 
+@@ -530,7 +531,6 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
+     if res_files is not None:
+         for r in res_files.values():
+             r.close()
+-
+     gen_timer.stop(lengths_hyp_t)
+ 
+     return GenResult(
+@@ -550,8 +550,6 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
+ 
+ 
+ def gen_hypos(generator, models, num_feats, sample, task, use_cuda):
+-    sample = utils.move_to_cuda(sample) if use_cuda else sample
+-
+     if "features" in sample["net_input"]:
+         sample["net_input"]["dense_x_only"] = True
+         num_feats += (
+@@ -561,6 +559,60 @@ def gen_hypos(generator, models, num_feats, sample, task, use_cuda):
+     hypos = task.inference_step(generator, models, sample, None)
+     return hypos, num_feats
+ 
++class Dataset:
++    """Creating Dataset class for getting Image and labels"""
++    def __init__(self):
++        self.test_audios, self.test_labels = [{"features": torch.Tensor(np.random.rand(394, 512)) , "padding_mask": torch.Tensor(np.random.rand(394)), "dense_x_only":True}],[{"features": torch.Tensor(np.random.rand(394, 512)) , "padding_mask": torch.Tensor(np.random.rand(394)),"dense_x_only":True}]
++
++    def __getitem__(self, index):
++        return self.test_audios[index], self.test_labels[index]
++
++    def __len__(self):
++        return len(self.test_audios)
++
++
++def neural_compressor_quantization(models, cfg, batch_size=1):
++    # Quantization
++    q_model = None
++    if cfg.fairseq.common.intel:
++        print('Executing INC')
++        from neural_compressor.experimental import Quantization, common
++        from neural_compressor.experimental import Benchmark
++        yaml_file_path = os.path.join(os.getenv('FAIRSEQ_ROOT'),"..","deploy.yaml")
++        quantizer = Quantization(yaml_file_path)
++        quantizer.model = models[0]
++        dataset = Dataset()
++        quantizer.calib_dataloader = common.DataLoader(dataset)
++        q_model = quantizer.fit()
++        inc_model_out_path = os.path.join(os.getenv('FAIRSEQ_ROOT'),"inc_output")
++        q_model.save(inc_model_out_path)
++    
++    test_audios = {'features' : torch.Tensor(np.random.rand(batch_size,394, 512)),
++                                'padding_mask' : torch.Tensor(np.random.rand(batch_size,394)), 'dense_x_only' : True}
++    # Timing Analysis
++    FP_AVG_TIME = 0
++    INT_AVG_TIME = 0
++    MAX_NUM_IERATIONS = 10
++    COUNT = 0
++    for i in range(10):
++        COUNT += 1
++        start_time = time.time()
++        pred = models[0](**test_audios)
++        pred_time_fp = time.time() - start_time
++        if cfg.fairseq.common.intel:
++            start_time = time.time()
++            pred_q = q_model(**test_audios)
++            pred_time_int = time.time() - start_time
++            INT_AVG_TIME += pred_time_int
++        FP_AVG_TIME += pred_time_fp
++        if COUNT>MAX_NUM_IERATIONS:
++            break
++    print("Batch Size used here is ", batch_size)
++    print("Average Inference Time Taken Fp32 --> ", (FP_AVG_TIME / COUNT))
++    if cfg.fairseq.common.intel:
++        print("Average Inference Time Taken Int8 --> ", (INT_AVG_TIME / COUNT))
++    return models[0], q_model
++
+ 
+ def main(cfg: UnsupGenerateConfig, model=None):
+     if (
+@@ -611,12 +663,35 @@ def main(cfg: UnsupGenerateConfig, model=None):
+         saved_cfg.task.shuffle = False
+         saved_cfg.task.sort_by_length = False
+ 
+-    gen_result = generate(cfg, models, saved_cfg, use_cuda)
++    if cfg.fairseq.common.intel:
++            import intel_extension_for_pytorch as ipex
++            models[0] = ipex.optimize(models[0])
++            print("======IPEX Patching Done========")
++
++    if cfg.fairseq.common.inc:
++        fp_model ,q_model = neural_compressor_quantization(models, cfg, batch_size=cfg.fairseq.dataset.batch_size)
++        if cfg.fairseq.common.intel:
++            models_q = [q_model,"INT8"]
++            logger.info(f"\n\n Evaluating FP32 Model \n")
++            gen_result = generate(cfg, models, saved_cfg, use_cuda)
++            wer = None
++            if gen_result.lengths_t > 0:
++                wer_fp = gen_result.errs_t * 100.0 / gen_result.lengths_t
++                logger.info(f"WER FP32: {wer_fp}")
++            logger.info(f"\n\nEvaluating INT8 Model\n ")
++            gen_result = generate(cfg, models_q, saved_cfg, use_cuda)
++            wer = None
++            if gen_result.lengths_t > 0:
++                wer_int = gen_result.errs_t * 100.0 / gen_result.lengths_t
++                logger.info(f"WER INT8: {wer_int}")
++            logger.info(f"\n\nWER DROP POST QUANTIZATION : {wer_int-wer_fp}")
++        sys.exit(0)
+ 
++    gen_result = generate(cfg, models, saved_cfg, use_cuda)
+     wer = None
+     if gen_result.lengths_t > 0:
+-        wer = gen_result.errs_t * 100.0 / gen_result.lengths_t
+-        logger.info(f"WER: {wer}")
++        wer_fp = gen_result.errs_t * 100.0 / gen_result.lengths_t
++        logger.info(f"WER FP32: {wer_fp}")
+ 
+     lm_ppl = float("inf")
+ 
+@@ -659,7 +734,6 @@ def main(cfg: UnsupGenerateConfig, model=None):
+     )
+ 
+     logger.info(res)
+-    # print(res)
+ 
+     return task, weighted_score
+ 
+diff --git a/fairseq/checkpoint_utils.py b/fairseq/checkpoint_utils.py
+index aeb04f79..6c24686f 100644
+--- a/fairseq/checkpoint_utils.py
++++ b/fairseq/checkpoint_utils.py
+@@ -414,7 +414,6 @@ def load_model_ensemble_and_task(
+             filename = get_maybe_sharded_checkpoint_filename(
+                 orig_filename, suffix, shard_idx, num_shards
+             )
+-
+             if not PathManager.exists(filename):
+                 raise IOError("Model file not found: {}".format(filename))
+             if state is None:
+@@ -574,13 +573,13 @@ def _torch_persistent_save(obj, f):
+ 
+ def _upgrade_state_dict(state):
+     """Helper for upgrading old model checkpoints."""
+-
++     
+     # add optimizer_history
+     if "optimizer_history" not in state:
+         state["optimizer_history"] = [
+             {"criterion_name": "CrossEntropyCriterion", "best_loss": state["best_loss"]}
+         ]
+-        state["last_optimizer_state"] = state["optimizer"]
++        #state["last_optimizer_state"] = state["optimizer"]
+         del state["optimizer"]
+         del state["best_loss"]
+     # move extra_state into sub-dictionary
+diff --git a/fairseq/dataclass/configs.py b/fairseq/dataclass/configs.py
+index 3079101d..f4940624 100644
+--- a/fairseq/dataclass/configs.py
++++ b/fairseq/dataclass/configs.py
+@@ -144,6 +144,8 @@ class CommonConfig(FairseqDataclass):
+         default=1, metadata={"help": "pseudo random number generator seed"}
+     )
+     cpu: bool = field(default=False, metadata={"help": "use CPU instead of CUDA"})
++    intel: bool = field(default=False, metadata={"help": "use Intel optimization"})
++    inc: bool = field(default=False, metadata={"help": "use INC QUANTIZATION"})
+     tpu: bool = field(default=False, metadata={"help": "use TPU instead of CUDA"})
+     bf16: bool = field(default=False, metadata={"help": "use bfloat16; implies --tpu"})
+     memory_efficient_bf16: bool = field(
+diff --git a/fairseq/distributed/utils.py b/fairseq/distributed/utils.py
+index 2c52f76a..96f37962 100644
+--- a/fairseq/distributed/utils.py
++++ b/fairseq/distributed/utils.py
+@@ -22,6 +22,8 @@ import torch.distributed as dist
+ from fairseq.dataclass.configs import DistributedTrainingConfig, FairseqConfig
+ from omegaconf import open_dict
+ 
++cuda = True if torch.cuda.is_available() else False
++
+ try:
+     import torch_xla.core.xla_model as xm
+ except ImportError:
+@@ -136,15 +138,13 @@ def _infer_slurm_init(cfg: DistributedTrainingConfig, num_pipelines_per_node):
+         except FileNotFoundError:  # Slurm is not installed
+             pass
+ 
+-
+ def _infer_single_node_init(cfg: DistributedTrainingConfig):
+     assert (
+-        cfg.distributed_world_size <= torch.cuda.device_count()
++       cfg.distributed_world_size <= torch.cuda.device_count()
+     ), f"world size is {cfg.distributed_world_size} but have {torch.cuda.device_count()} available devices"
+     port = random.randint(10000, 20000)
+     cfg.distributed_init_method = "tcp://localhost:{port}".format(port=port)
+ 
+-
+ def _pipeline_parallel_pre_init(cfg: DistributedTrainingConfig):
+     from fairseq import utils
+ 
+diff --git a/fairseq/models/wav2vec/wav2vec.py b/fairseq/models/wav2vec/wav2vec.py
+index af6604da..25cacad7 100644
+--- a/fairseq/models/wav2vec/wav2vec.py
++++ b/fairseq/models/wav2vec/wav2vec.py
+@@ -171,7 +171,6 @@ class Wav2VecModel(BaseFairseqModel):
+ 
+     def __init__(self, cfg: Wav2VecConfig):
+         super().__init__()
+-
+         self.prediction_steps = cfg.prediction_steps
+         offset = cfg.offset
+ 
+diff --git a/fairseq/optim/adam.py b/fairseq/optim/adam.py
+index 678ec7c6..67332e0f 100644
+--- a/fairseq/optim/adam.py
++++ b/fairseq/optim/adam.py
+@@ -74,8 +74,13 @@ class FairseqAdam(FairseqOptimizer):
+                 raise NotImplementedError(
+                     "--fp16-adam-stats is only supported with FusedAdamV1"
+                 )
++            #print(params.shape)
++            print(self.optimizer_config)
+             self._optimizer = Adam(params, **self.optimizer_config)
+ 
++    def set_optimizer(self, optimizer):
++        self._optimizer = optimizer
++
+     @property
+     def optimizer_config(self):
+         """
+diff --git a/fairseq/optim/composite.py b/fairseq/optim/composite.py
+index 63701ee8..dcfd1af3 100644
+--- a/fairseq/optim/composite.py
++++ b/fairseq/optim/composite.py
+@@ -49,7 +49,6 @@ class FairseqCompositeOptimizer(FairseqOptimizer):
+ 
+     def __init__(self, cfg: CompositeOptimizerConfig, params):
+         super().__init__(cfg)
+-
+         assert (
+             len(params) > 1
+         ), "Composite optimizer only works when there are multiple parameter groups (try fp16_no_flatten_grads: true)"
+@@ -138,6 +137,13 @@ class CompositeOptimizer(torch.optim.Optimizer):
+     def supports_flat_params(self):
+         return all(o.supports_flat_params for o in self.optimizers.values())
+ 
++    @property
++    def get_optimizers(self):
++        return self.optimizers
++    
++    def set_optimizers(self, opts):
++        self.optimizers = opts
++
+     def step(self, closure=None, groups=None):
+         """Performs a single optimization step.
+ 
+diff --git a/fairseq/trainer.py b/fairseq/trainer.py
+index ee7d1033..55c00520 100644
+--- a/fairseq/trainer.py
++++ b/fairseq/trainer.py
+@@ -32,6 +32,8 @@ from fairseq.utils import safe_hasattr
+ 
+ logger = logging.getLogger(__name__)
+ 
++	
++
+ 
+ class Trainer(object):
+     """Main class for data parallel training.
+@@ -57,6 +59,7 @@ class Trainer(object):
+         # catalog shared parameters
+         shared_params = _catalog_shared_params(model)
+         self.tpu = cfg.common.tpu
++        print("cpu ? :"+str(cfg.common.cpu))
+         self.cuda = torch.cuda.is_available() and not cfg.common.cpu and not self.tpu
+         if self.cuda:
+             self.device = torch.device("cuda")
+@@ -64,6 +67,7 @@ class Trainer(object):
+             self.device = utils.get_tpu_device()
+         else:
+             self.device = torch.device("cpu")
++        print(self.device)
+ 
+         if self.is_fsdp:
+             import fairscale
+@@ -775,6 +779,30 @@ class Trainer(object):
+     def reset_dummy_batch(self, batch):
+         self._dummy_batch = batch
+ 
++    def patch_with_ipex_optimize(self):
++        # print('patch with ipex')
++        # print(self.optimizer.__class__.__name__)
++        # print(self._optimizer.__class__.__name__)
++        # print(self.optimizer.optimizer.__class__.__name__)
++        # print(self.model.__class__.__name__)
++        import intel_extension_for_pytorch as ipex
++
++        opts = self.optimizer.optimizer.get_optimizers
++        # print(opts)
++        # print(opts.__class__.__name__)
++        model = self.model
++        for opt in opts.values():
++            # print(type(opt))
++            # print(opt._optimizer.__class__.__name__)
++            pathched_model, pathched_opt = ipex.optimize(model, optimizer=opt._optimizer)
++            # print('after ipex patching')
++            # print(pathched_opt.__class__.__name__)
++            opt.set_optimizer(pathched_opt)
++        self._wrapped_model = pathched_model
++        # print(type(opts))
++        self.optimizer.optimizer.set_optimizers(opts)
++        print("=====IPEX Patching Done=======")
++
+     @metrics.aggregate("train")
+     def train_step(self, samples, raise_oom=False):
+         """Do forward, backward and parameter update."""
+diff --git a/fairseq_cli/train.py b/fairseq_cli/train.py
+index 376bd1d0..e6e52f66 100644
+--- a/fairseq_cli/train.py
++++ b/fairseq_cli/train.py
+@@ -12,8 +12,10 @@ import logging
+ import math
+ import os
+ import sys
++import time
+ from typing import Any, Callable, Dict, List, Optional, Tuple
+ 
++
+ # We need to setup root logger before importing any fairseq libraries.
+ logging.basicConfig(
+     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+@@ -87,7 +89,7 @@ def main(cfg: FairseqConfig) -> None:
+     task = tasks.setup_task(cfg.task)
+ 
+     assert cfg.criterion, "Please specify criterion to train a model"
+-
++    start=time.time()
+     # Build model and criterion
+     if cfg.distributed_training.ddp_backend == "fully_sharded":
+         with fsdp_enable_wrap(cfg.distributed_training):
+@@ -122,7 +124,11 @@ def main(cfg: FairseqConfig) -> None:
+             ),
+         )
+     )
++    end=time.time()
++
++    x=end-start
+ 
++    print("Time taken for initial training and building model ======================================",x)
+     # Load valid dataset (we load training data below, based on the latest checkpoint)
+     # We load the valid dataset AFTER building the model
+     data_utils.raise_if_valid_subsets_unintentionally_ignored(cfg)
+@@ -175,6 +181,13 @@ def main(cfg: FairseqConfig) -> None:
+     max_epoch = cfg.optimization.max_epoch or math.inf
+     lr = trainer.get_lr()
+ 
++    #Patch with IPEX
++    #put with intel flag
++    print(cfg.common.intel)
++    if cfg.common.intel:
++        print("START PATCHING with IPEX")
++        trainer.patch_with_ipex_optimize()
++
+     train_meter = meters.StopwatchMeter()
+     train_meter.start()
+     while epoch_itr.next_epoch_idx <= max_epoch:
+@@ -213,7 +226,6 @@ def main(cfg: FairseqConfig) -> None:
+         PathManager.async_close()
+         logger.info("ioPath PathManager finished waiting.")
+ 
+-
+ def should_stop_early(cfg: DictConfig, valid_loss: float) -> bool:
+     # skip check if no validation was done in the current epoch
+     if valid_loss is None:
+@@ -367,10 +379,11 @@ def validate_and_save(
+ ) -> Tuple[List[Optional[float]], bool]:
+     num_updates = trainer.get_num_updates()
+     max_update = cfg.optimization.max_update or math.inf
+-
+     # Stopping conditions (and an additional one based on validation loss later
+     # on)
+     should_stop = False
++    print("num_updates: "+str(num_updates))
++    print("max_updates: "+str(max_update))
+     if num_updates >= max_update:
+         should_stop = True
+         logger.info(
+diff --git a/setup.py b/setup.py
+index e2e44570..6631aa4f 100644
+--- a/setup.py
++++ b/setup.py
+@@ -164,10 +164,13 @@ if "READTHEDOCS" in os.environ:
+ 
+     # use CPU build of PyTorch
+     dependency_links = [
+-        "https://download.pytorch.org/whl/cpu/torch-1.7.0%2Bcpu-cp36-cp36m-linux_x86_64.whl"
++        "https://download.pytorch.org/whl/cpu/torch-1.7.0%2Bcpu-cp36-cp36m-linux_x86_64.whl",
++        "https://download.pytorch.org/whl/cpu"
+     ]
+ else:
+-    dependency_links = []
++    dependency_links = [
++        "https://download.pytorch.org/whl/cpu"
++    ]
+ 
+ 
+ if "clean" in sys.argv[1:]:
+@@ -217,10 +220,10 @@ def do_setup(package_data):
+             'numpy; python_version>="3.7"',
+             "regex",
+             "sacrebleu>=1.4.12",
+-            "torch",
++            #"torch>=1.12.0,<=1.12.1",
+             "tqdm",
+             "bitarray",
+-            "torchaudio>=0.8.0",
++            #"torchaudio>=0.12.1",
+         ],
+         dependency_links=dependency_links,
+         packages=find_packages(
