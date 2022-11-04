@@ -1,0 +1,16 @@
+version: 1.0
+
+model:
+  name: Speech2Text
+  framework: pytorch_fx
+evaluation:                                          # optional. required if user doesn't provide eval_func in neural_compressor.Quantization.
+  accuracy:                                          # optional. required if user doesn't provide eval_func in neural_compressor.Quantization.
+    metric:
+      topk: 1
+  performance:                        # optional. used to benchmark performance of passing model.
+    configs:
+      cores_per_instance: 2
+      num_of_instance: 1
+tuning:
+  accuracy_criterion:
+    relative:  0.01                                  # optional. default value is relative, other value is absolute. this example allows relative accuracy loss: 1%.
