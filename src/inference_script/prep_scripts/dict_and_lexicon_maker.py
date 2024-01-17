@@ -1,10 +1,9 @@
 # Usage: python dict_and_lexicon_maker.py --wrd <path to train.wrd>train.wrd --lexicon <destnation path>/lexicon.lst --dict <destnation path>/dict.ltr.txt # noqa: E501
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: BSD-3-Clause
 # pylint: disable=W0311, C0304, C0114, C0411, W0611
 
 import numpy as np
-import sys  # noqa: F401,W291
 import argparse
 
 def main():

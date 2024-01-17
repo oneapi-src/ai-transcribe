@@ -1,14 +1,14 @@
 #!/bin/bash
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: BSD-3-Clause
 
 #Please give the path of precompute_pca512_cls128_mean_pooled from prepared_audio folder
-TASK_DATA='<absolute path of cloned fairseq>/prepared_audio/precompute_pca512_cls128_mean_pooled'
+TASK_DATA="${FAIRSEQ_ROOT}/prepared_audio/precompute_pca512_cls128_mean_pooled"
 
 #Intel Model - please give the same path where the model was saved earlier
-MODEL_PATH='<absolute path of cloned fairseq>/model/stock/checkpoint_best.pt'
+MODEL_PATH="${OUTPUT_DIR}/model/checkpoint_last.pt"
 
-test_eval_result="<absolute path of the cloned repo>/test_eval_result_intel"
+test_eval_result="${OUTPUT_DIR}/test_eval_result"
 mkdir -p $test_eval_result
 
 #python ${FAIRSEQ_ROOT}/examples/wav2vec/unsupervised/w2vu_generate.py --config-dir ${FAIRSEQ_ROOT}/examples/wav2vec/unsupervised/config/generate/ --config-name viterbi \

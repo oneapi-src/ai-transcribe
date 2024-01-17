@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: BSD-3-Clause
 # Usage: python manifest.py <path to wav files> --dest <path to destination tsv> --ext wav --train-name train.tsv --valid-percent 0 --jobs -1
 # pylint: disable=C0304,C0114,E0401,R1705,R1716,W1514,C0411

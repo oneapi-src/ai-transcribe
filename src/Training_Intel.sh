@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: BSD-3-Clause
 
 start=$(date +"%r")
@@ -14,19 +14,19 @@ PREFIX="w2v_unsup_gan_xp"
 
 
 # Path to prepared_audio/precompute_pca512_cls128_mean_pooled - Prepared Audio
-TASK_DATA='<absolute path of the cloned fairseq>/prepared_audio/precompute_pca512_cls128_mean_pooled'
+TASK_DATA="${FAIRSEQ_ROOT}/prepared_audio/precompute_pca512_cls128_mean_pooled"
 # path to fairseq-preprocessed GAN data (phones dir) - Prepared Text data
-TEXT_DATA='<absolute path of the cloned fairseq>/prepared_text/phones'
+TEXT_DATA="${FAIRSEQ_ROOT}/prepared_text/phones"
 
 # KenLM 4-gram phoneme language model (LM data = GAN data here)
-KENLM_PATH='<absolute path of the cloned fairseq>/prepared_text/phones/lm.phones.filtered.04.bin'
+KENLM_PATH="${FAIRSEQ_ROOT}/prepared_text/phones/lm.phones.filtered.04.bin"
 
 # Path where the model would get saved
-OUT_PATH='<absolute path of the cloned fairseq>/model/stock'
+OUT_PATH="${OUTPUT_DIR}/model"
 echo $OUT_PATH
 mkdir -p $OUT_PATH
 # Path to the the config file of the unsupervised gan model
-CONFIG_PATH='<absolute path of fairseq>/examples/wav2vec/unsupervised/config/gan'
+CONFIG_PATH="${FAIRSEQ_ROOT}/examples/wav2vec/unsupervised/config/gan"
 
 
 PYTHONPATH=$FAIRSEQ_ROOT PREFIX=$PREFIX CUDA_LAUNCH_BLOCKING=1 fairseq-hydra-train \
@@ -39,7 +39,7 @@ PYTHONPATH=$FAIRSEQ_ROOT PREFIX=$PREFIX CUDA_LAUNCH_BLOCKING=1 fairseq-hydra-tra
 	checkpoint.keep_last_epochs=20 \
 	checkpoint.save_dir=${OUT_PATH} \
 	common.user_dir=${FAIRSEQ_ROOT}/examples/wav2vec/unsupervised \
-	common.intel=false \
+	common.intel=true \
 	model.code_penalty=2,4 model.gradient_penalty=1.5,2.0 \
 	model.smoothness_weight=0.5,0.75,1.0 'common.seed=range(0,5)'
 

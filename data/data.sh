@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: BSD-3-Clause
 #
 # Adopted from the source: https://github.com/opendcd/opendcd/blob/master/egs/librispeech-get-data.sh

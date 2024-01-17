@@ -1,17 +1,12 @@
+# AI Transcription
 
-# Application of AI in transcribes for converting speech into text using PyTorch
+## Introduction
 
-## Table of Contents 
- - [Purpose](#purpose)
- - [Reference Solution](#reference-solution)
- - [Reference Implementation](#reference-implementation)
- - [Intel® Implementation](#optimizing-the-E2E-solution-with-Intel®-oneAPI)
- - [Performance Observations](#performance-observations)
+Build an optimized Automatic Speech Recognition (ASR) solution that converts unlabeled speech audio signals into phonemized text using Intel® Extension for PyTorch\* and Intel® Neural Compressor, following an unsupervised adversarial training approach. Check out the [Developer Catalog](https://developer.intel.com/aireferenceimplementations) for information about different use cases.
 
+## Solution Technical Overview
 
-## Purpose
-
-Behavioral health-related issues require multiple therapy sessions, detailed Psychotherapy notes during the session, and subsequent analysis. In-depth analysis can often provide a root cause of symptoms such as low mood, lack of positive emotion, and other emotional and cognitive disorders attributable to substance abuse or personality disorders. Accurate analysis and prediction of conditions and symptoms can result in medication that can drive better outcomes for the patient. Regulations also require psychologists to create progress notes based on the therapy sessions that assist with : (source: https://footholdtechnology.com/news/mental-health-progress-notes/)
+Behavioral health-related issues require multiple therapy sessions, detailed Psychotherapy notes during the session, and subsequent analysis. In-depth analysis can often provide a root cause of symptoms such as low mood, lack of positive emotion, and other emotional and cognitive disorders attributable to substance abuse or personality disorders. Accurate analysis and prediction of conditions and symptoms can result in medication that can drive better outcomes for the patient. Regulations also require psychologists to create progress notes based on the therapy sessions that can assist in multiple tasks, including [[1]](#lcsw_2021):
 
 ■ Helping therapist to keep track of each client and their treatment
 <br>■ Coordinating care by communicating pertinent information to other members of the care team
@@ -19,478 +14,594 @@ Behavioral health-related issues require multiple therapy sessions, detailed Psy
 <br>■ Complying with professional obligations
 <br>■ Billing for services
 
-However, taking Psychotherapy notes, subsequent analysis, and writing detailed progress notes can consume up to half the time. With a growing rate of mental issues and a shortage of psychiatrists, appointments for therapy can be difficult, resulting in situations where patients that need care decline the service altogether. 
+However, taking Psychotherapy notes, subsequent analysis, and writing detailed progress notes can consume up to half the time. With a growing rate of mental issues and a shortage of psychiatrists, appointments for therapy can be difficult, resulting in situations where patients that need care decline the service altogether.
 
 Our analysis of the market demand led us to two fundamental questions:
-1. How can AI models drive higher productivity for psychologists?
+1. How can Artificial Intelligence (AI) models drive higher productivity for psychologists?
 2. How can these solutions be deployed at scale, reducing the time to implement the solution and the cost per outcome? 
 
-AI technologies that convert speech to text can capture notes. We present a reference model that extends the capability further to contextualize the information and automate the generation of progress reports. A further enhancement is possible when paired with other predictive methodologies to analyze the results to provide the right course of action for the patient.   
-Given the training, customization, and environmental requirements, such solutions need accelerations to deploy rapidly for many clients and keep the system updated for accuracy. This model further describes achieving such scale with the application of the AI Analytics toolkit.
+The problem of manually writing exhaustive documentation during and after Psychotherapy sessions that negatively impacts therapist productivity can be addressed by automated speech processing techniques equipped with AI algorithms. In particular, Automatic Speech Recognition (ASR) applications emerge as a suitable alternative solution.
+
+An ASR system allows a computer to take as an input an audio file or a speech from the microphone and convert it into a text [[2]](#malik_2020). ASR is a core technology to enable human-machine interactions and it has had great commercial success in the development of applications for areas like information access and speech-to-speech translation [[3]](#lu_2019). 
+
+Recently, the performance of ASR systems has greatly benefited from the incorporation of deep learning techniques like Recurrent Neural Networks and Transformers [[4]](#mehrish_2023), which in turn require a huge volume of transcribed speech data to increase recognition accuracy. However, labeling large datasets is not just a time-consuming activity, but also involves a high monetary cost. 
+
+This reference kit provides an ASR solution that carries out the transcription of audio into text using a Generative Adversarial Network (GAN) trained following an unsupervised approach with unlabeled audio data. Moreover, considering the scale demands for an ASR system in the context of Psychotherapy sessions, the ASR system proposed in this reference kit allows an efficient deployment while maintaining the accuracy and speeding up the inference time by leveraging the following Intel® optimization packages:
 
 
-# Reference Solution
-Speech to Text conversion is one of the latest Cognitive solutions to be used in various Business, Personal & Medical use cases.  In the present reference kit, we are building a solution to convert 'Speech to Text' by leveraging a toolkit called 'Fairseq' (Facebook AI Research Sequence-to-Sequence Toolkit). 
-Fairseq is a sequence modeling toolkit written in PyTorch that allows researchers and developers to train custom models for translation, summarization, language modeling, and other text generation tasks. It provides reference implementations of various sequence-to-sequence models, including Long Short-Term Memory (LSTM) networks and a novel convolutional neural network (CNN) that can generate translations many times faster than comparable recurrent neural network (RNN) models. It is developed by Meta. You can read more about [Fairseq](https://github.com/facebookresearch/fairseq).
+* ***Intel® Distribution for Python\****
 
-<br>After data pre-processing with the help of the pre-trained models using Fairseq as a first step, we introduced Generative Adversarial Networks (GANs) training. These are a powerful class of neural networks used for unsupervised learning. In this reference kit, we introduced the PyTorch implementation of GAN training. GAN automatically learns and discovers patterns within data to build the first unsupervised ASR model (Automatic Speech Recognition). This step enables a program to transcribe spoken language (speech-to-text). Our goal is usually to have a model that minimizes the Word Error Rate (WER) metric when transcribing speech input.
-This specific implementation of GAN used PyTorch, which includes a Generator and a Discriminator. 
+  The [Intel® Distribution for Python\*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/distribution-for-python.html) provides:
+
+    * Scalable performance using all available CPU cores on laptops, desktops, and powerful servers
+    * Support for the latest CPU instructions
+    * Near-native performance through acceleration of core numerical and machine learning packages with libraries like the Intel® oneAPI Math Kernel Library (oneMKL) and Intel® oneAPI Data Analytics Library
+    * Productivity tools for compiling Python\* code into optimized instructions
+    * Essential Python\* bindings for easing integration of Intel® native tools with your Python\* project
+
+* ***Intel® Extension for PyTorch\****
+
+  With a few lines of code, you can use [Intel® Extension for PyTorch\*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/optimization-for-pytorch.html#gs.5vjhbw) to:
+    * Take advantage of the most up-to-date Intel software and hardware optimizations for PyTorch\*.
+    * Automatically mix different precision data types to reduce the model size and computational workload for inference.
+    * Add your own performance customizations using APIs.
+
+* ***Intel® Neural Compressor***
+
+  [Intel® Neural Compressor](https://www.intel.com/content/www/us/en/developer/tools/oneapi/neural-compressor.html#gs.5vjr1p) performs model compression to reduce the model size and increase the speed of deep learning inference for deployment on CPUs or GPUs. This open source Python\* library automates popular model compression technologies, such as quantization, pruning, and knowledge distillation across multiple deep learning frameworks.
+
+The ASR system introduced in this project can be used as a foundation to automate the generation of progress reports for Psychotherapy sessions. A further enhancement is possible when paired with other predictive methodologies to analyze the results to provide the right course of action for the patient.
+
+In the [Solution Technical Details](#solution-technical-details) section, the interested reader can find a more thorough technical discussion regarding the ASR solution presented in this reference kit, while the components of the ASR system workflow are described in the [How it Works section](#how-it-works), along with an explanation on how Intel® Extension for PyTorch\* and Intel® Neural Compressor are useful in boosting the training and inference performance of the system.
+
+For more details, visit [Intel® Distribution for Python](https://www.intel.com/content/www/us/en/developer/tools/oneapi/distribution-for-python.html), [Intel® Extension for PyTorch\*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/optimization-for-pytorch.html#gs.5vjhbw), [Intel® Neural Compressor](https://www.intel.com/content/www/us/en/developer/tools/oneapi/neural-compressor.html#gs.5vjr1p), and the [AI Transcription](https://github.com/oneapi-src/ai-transcribe) GitHub repository.
+
+## Solution Technical Details
+
+In this section, the interested reader can find a more in deep explanation regarding the speech-to-text mapping process implemented by the proposed ASR solution. A description of the datasets used by the ASR pipeline is also presented. 
+
+### Speech to Text Conversion Using the Wav2vec-U Framework
+
+Human language encompasses various facets of expression, including spoken communication, written text and sign language [[4]](#mehrish_2023). For speech, the concept of phonemes is essential as they can be seen as descriptors that represent the different sounds which distinguish words from each other, e.g., the word cat entails three phonemes /K/, /AE/ and /T/, which correspond to the three distinct sounds that makes up the pronunciation of the word [[5]](#baevsky_2021). As will be seen later in the implementation of this reference kit ASR system, the use of phonemes becomes very important to achieve high accuracy in the speech-to-text task. 
+
+The present reference kit provides a solution that carries out the process of converting speech to text by leveraging a toolkit called Fairseq (Facebook\* AI Research Sequence-to-Sequence Toolkit) developed by Meta\*. Fairseq allows to train custom models to address multiple sequence-to-sequence problems, including translation and summarization. Please refer to the [Fairseq](https://github.com/facebookresearch/fairseq) repository to learn all the details behind this toolkit. 
+
+To be more specific, with the aim of achieving the speech transcription task, this reference kit utilizes a specialized Fairseq framework called Wav2vec-U, which performs training speech recognition in an unsupervised manner, given no labeled training data at all. Wav2vec-U is part of the ASR systems that work in a two-step pipeline: a preprocessing stage followed by the unsupervised training stage, with the goal of mapping input audio speech signals into phoneme sequences [[6]](#liu_2023). Next, the stages of the Wav2vec-U framework are outlined according to the research paper [[5]](#baevsky_2021) where this methodology is proposed.
+  
+  1) Speech signal representations are extracted by the wav2vec 2.0 model [[7]](#baevsky_2020) using self-supervised learning. The wav2vec 2.0 model implements a convolutional feature encoder to maps raw audio sequences to latent speech representations, which a Transformer converts into context representations.
+  2) K-means clustering is applied to the speech representations with the aim to grouping similar phonetic characteristics.
+  3) The clusters are leveraged to introduce speech segment boundaries whenever the cluster identifier changes.
+  4) Segmented representations are build using Principal Component Analysis (PCA) for dimensionality reduction and a mean-pooled process that also includes adjacent segments.
+  5) From this stage, the training process starts by using a GAN, inputting the segmented representations to the generator, whose outcomes are phoneme sequences. These phonemes correspond to the transcriptions of the initial input audio signals.
+  6) The discriminator is fed with unlabeled phonemized text, as well as with the phoneme sequences produced by the generator.
+  7) The discriminator is trained to determine whether the phonemes come from the generator (fake) or from the unlabeled text data (real).   
+
+**Note:** It is especially important to consider that the transcriptions produced by the GAN are presented as phonemes. The reason behind this is that it was found easier to learn a mapping between speech audio and phonemes rather than between speech audio and letters or words [[5]](#baevsky_2021). 
+
+The next workflow diagram offers a visual illustration of the Wav2vec-U pipeline previously described.
+
+![ocr-flow](assets/fairseq_workflow.png)
+
+### Datasets
+
+As the ASR system presented in this reference kit relies on an unsupervised adversarial training procedure where the Generator requires input audio in the form of phoneme sequences whereas the Discriminator receives phonemized text as input (please refer to [Speech to Text Conversion Using the Wav2vec-U Framework](#speech-audio-dataset) subsection for more information), it becomes necessary to obtain a dataset of audio samples for the Generator and a text corpora for the Discriminator.
+
+#### Speech Audio Dataset
+The audio dataset used in this reference kit is the LibriSpeech ASR corpus from [Open SLR](https://www.openslr.org/12/). The data is fetched from Open SLR using a shell script (see this [subsection](#librispeech-asr-corpus)). The shell script is adapted from this [source](https://github.com/opendcd/opendcd/blob/master/egs/librispeech-get-data.sh).
+
+LibriSpeech ASR corpus is an audio speech corpus of approximately 1,000 hours of read English speech from the LibriVox project of public-domain audiobooks. Each sample in the dataset consists of voice samples read from audiobooks and used as a substitute to recreate patients' recorded voices during therapy sessions.
+
+| **Use case** | Speech-to-text conversion
+| :--- | :---
+| **Name** | LibriSpecch ASR corpus <br>
+| **Size** | Total 5,323 voice samples
+| **Development Set** | 2,703 voice samples
+| **Test Set** | 2,620 voice samples
+| **Data format** | .flac & .wav
 
 
-### Key Implementation Details
-The reference kit implementation is a reference solution to the described use case that includes:
+It is important to state that even though the LibriSpeech ASR corpus is splitted into several parts, for the specific case of this reference kit, only two subsets of the corpus are used: the *dev-clean* and the *test-clean* subsets.
 
-1. A reference E2E architecture to arrive at an AI solution by leveraging the Fairseq toolkit
-2. An Optimized reference E2E architecture enabled with Intel® Extension for PyTorch
+> *Please see this data set's applicable license for terms and conditions. Intel® does not own the rights to this data set and does not confer any rights to it.*
 
-## Reference Implementation
+#### Text Corpora Dataset
+The English version of the Leipzig Corpora Collection [[8]](#goldhahn_2012) is used in this reference kit to feed the Discriminator with unlabeled text sentences. 
 
-### E2E Architecture
+The Leipzig Corpora Collection provides a corpora in different languages, including English, German and French, all using the same format and comparable resources. For each language, the corpora is collected by randomly selected sentences and is available in sizes from 10,000 sentences up to 1 million sentences. The collection sources are either newspaper texts or texts randomly collected from the web. For more information about the Leipzig Corpora Collection, see the [download page](https://wortschatz.uni-leipzig.de/en/download).
 
-Organizations are considering using API-based services that provide access to pre-trained models or leveraging transformers. However, such models continuously need to improve with new labeled data. Labeling data is a hugely time-consuming activity.
-This is where the Unsupervised methods come to the rescue. Unsupervised Speech recognition can provide a better service option as it can handle large amounts of unlabeled and unstructured data. This makes it easier and faster to analyze complex data.
+The next table shows more details about the English corpora from the Leipzig Corpora Collection used in this reference kit:
 
-![image](assets/end_to_end_flow.png)
+| **Use case** | Speech-to-text conversion
+| :--- | :---
+| **Name** | Leipzig Corpora Collection <br>
+| **Language** | English
+| **Year** | 2005
+| **Size** | 10,000 text sentences
 
-### Experiment Details
-The experiment aims to convert speech into text by leveraging a sequence-to-sequence framework called Fairseq, which allows training custom models for translation, summarization, language modeling, and other text generation tasks. The experiment's goal is first to conduct a data preparation with the help of the Fairseq toolkit & a pre-trained model, then calculate the inference for benchmarking against Intel's technology.
+> *Please see this data set's applicable license for terms and conditions. Intel® does not own the rights to this data set and does not confer any rights to it.*
 
-Voice samples generally fall under unstructured data. The voice samples are subjected to pre-processing steps for preparing speech representations from unlabeled audio samples and learning a mapping from these representations to phonemes via GAN. The data preparation step is an essential procedure that enables the Generator to match speech to text in an unsupervised manner. Upon completion of the GAN training, we save the trained model. We also execute inference on this model as part of the benchmarking.
+## Validated Hardware Details
+There are workflow-specific hardware and software setup requirements depending on how the workflow is run. 
 
-We break the reference into two key activities:<br>
-1. Data preparation and training 
-2. Inference.
+| Recommended Hardware                                            | Precision
+| ----------------------------------------------------------------|-
+| CPU: Intel® 2nd Gen Xeon® Platinum 8280L CPU @ 2.70GHz or higher | FP32, INT8
+| RAM: 187 GB                                                     |
+| Recommended Free Disk Space: 20 GB or more                      |
 
-The first step is data preparation of both speech & text data features. This step is essential to match speech to text in an unsupervised manner. The second step is pre-processing the unstructured voice samples into segmented unlabeled audio samples. We use the pe-trained wave2vecsmall.pt model, which helps learn basic speech units to tackle a self-supervised task. The model training further includes predicting the correct speech unit for masked audio parts while also discovering what the speech units should be. We applied K-Means Clustering and PCA to categorize audio/music by similar audio features.
+Code was tested on Ubuntu\* 22.04 LTS.
 
-In this experiment, we require English text corpus data. A speech corpus (or spoken corpus) is a database of speech audio files and text transcription. In speech technology, speech corpora are used, among other things, to represent the relationship between an audio signal and the phonemes, which helps in speech recognition. The next step is to prepare phonetic text data by setting the phonemizer to espeak (English only).
+## How it Works
+The implementation of the ASR solution presented in this reference kit consists mainly in the deployment of the Wav2vec-U framework, which essentially involves the preprocessing of the input speech data and the unsupervised adversarial training (see this [subsection](#speech-to-text-conversion-using-the-wav2vec-u-framework) for more details). However, before executing the Wav2vec-U pipeline, it is required to meet some pre-requisites. The instructions to install these pre-requisites and deploy the Wav2vec-U pipeline are explained as follows:
 
-The second step is to run GAN training on top of the pre-processing features to map the representations to phonemes. We loop in new data to identify the best model.
+  1) Install Ubuntu Dependencies. In order to properly install Fairseq, PyKaldi, kenlm and Flashlight in further steps and also enabling other processing tasks, it is mandatory to install certain Ubuntu dependencies. The E-Speak tool is also installed in this step.
 
-Upon completion of the GAN training, the trained model becomes more accurate with the mapping. This model is then used as a baseline for inference to compare against Intel Technology.
+  2) Install Fairseq. This step requires to clone the Fairseq repository and make certain setups to use a specific version of the repository that enables the use of Intel® Extension for PyTorch\* and Intel® Neural Compressor.
 
+  3) Install rVAD, PyKaldi, kenlm and Flashlight. In this step, the next set of tools is installed: E-Speak, rVAD, PyKaldi, kenlm and Flashlight. These packages are required to accomplish the preprocessing of audio and text data, the unsupervised adversarial training, and the inference with the trained GAN model.
 
-### Expected Input-Output
+  4) Download LibriSpeech ASR Corpus and Leipzig Corpora Collection. The speech audio data and the text corpus are downloaded in this stage. For more information about these datasets, see this [subsection](#datasets).
 
-**Input**                                 | **Output** |
-| :---: | :---: |
-| Patients' Voice samples                 | Phonemic text |
+  5) Download Pre-trained Models for Audio and Text Preprocessing. In order to obtain useful audio representations, a simpler version of the wav2vec 2.0 model is downloaded. In the case of the text data, it is preprocessed using a pre-trained fasttext LID model called *lid.176.bin* [[9]](#joulinb_2016)[[10]](#joulinf_2016).
 
-### Solution Summary:
+  6) Create Manifest File for Training Set. In this stage, the audio training set is defined in a *tsv* file using the LibriSpeech dataset downloaded in step 4. 
 
-|**Key Attribute**                  |**Description**
-| :---                              | :---
-| Industry                          | Medical (Psychotherapy)
-| Dataset                            | Libri Speech Dataset with 5k voice samples , <br> Dev samples - 2.5k , <br> Test samples - 2.6k , <br> Data format - .flac & .wav , <br>
-| Task                              | Convert Speech to Text
-| Types of Learning                 | Unsupervised, Transfer Learning 
-| Pre-trained models                | Wav2vec_small.pt 
-| Frameworks used                   | fairseq-wave2vec U, Pykaldi, KenLM, rVAD
-| Hardware                          | Intel IceLake CPU<br>
-| Intel AI Software Portfolio       | Intel® Extension for PyTorch (IPEX)
+  7) Remove Silence. Using the rVAD library installed in step 3, a voice activity detection takes place with the aim to remove unwanted silence sections present in the audio training set.
 
-## Reference Sources
-**Case Study Reference**: https://github.com/pytorch/fairseq/tree/main/examples/wav2vec/unsupervised
-<br>https://github.com/Open-Speech-EkStep/vakyansh-wav2vec2-experimentation
+  8) Create Manifest File to Split Silence-Free Training Set. Now that the audio training set is defined and the silence sections have been removed, this training set is split to create a validation set.
 
-## GAN network Analysis
+  9) Audio Data Preprocessing. A feature engineering process is conducted on the training and validation set generated in step 8, producing segmented representations. Here is precisely where the Wav2vec-U pipeline starts its execution as explained in the [Speech to Text Conversion Using the Wav2vec-U Framework](#speech-to-text-conversion-using-the-wav2vec-u-framework) subsection.
 
-In a realistic scenario, the data scientists will run the same PyTorch-based model generated using the fairseq multiple times on the same dataset across different parameters. 
+  10) Text Data Preprocessing. The text corpus downloaded in step 4 is converted into phonemized text.
 
-#### Default Parameters
-In our scenario, we have 2 networks - A Generator and a Discriminator.  
-| **Network**                       | **parameters**
-| :---                              | :---
-| Generator                         | `learning rate = 0.0004,`<br> `beta1 = 0.5 ,`<br> `beta2 = 0.98 ,`<br> `epsilon = 1e-06,`<br> `weight_decay = 0,` <br> 
-| Discriminator                     | `learning rate = 0.0005,`<br> `beta1 = 0.5 ,`<br> `beta2 = 0.98 ,`<br> `epsilon = 1e-06,`<br> `weight_decay = 0,` <br> 
+  11) Unsupervised Adversarial Training Using Intel® Extension for PyTorch\*. In this stage, the Generator is fed with audio segmented representations, and during training, it learns to map these sequences into phonemes. Then, the Discriminator takes as input either the sequence of phonemes produced by the Generator or the sequence of phonemized text and is trained to indicate how likely the input sequence of phones is to be from the text data or from the audio signals. Intel® Extension for PyTorch\* is applied in this stage to boost the training performance.
 
-## Dataset
-For this reference kit -we use the Librispeech dataset from Open SLR (http://www.openslr.org/12/). The data is fetched from Open SLR using a shell script. The shell script is adapted from -https://github.com/opendcd/opendcd/blob/master/egs/librispeech-get-data.sh
-> *Please see this data set's applicable license for terms and conditions. Intel does not own the rights to this data set and does not confer any rights to it.*
+  12) Inference Using Intel® Extension for PyTorch\* and Intel® Neural Compressor. Based on the model trained in step 11, input audio data is converted into phonemized text. Along with Intel® Extension for PyTorch\*, the inference is accelerated by the application of Intel® Neural Compressor.
 
-Librispeech consists of audio samples based on LibriVox's public-domain audiobooks. Each sample in the dataset consists of voice samples read from audiobooks & used as a substitute to recreate patients' recorded voices during the therapy sessions.
+As a useful visual reference, these steps are illustrated in the following diagram.
 
-### Software Requirements
-1. Python -v3.8.10
-2. PyTorch - v1.11.0
-3. Fairseq
-4. rVAD
-5. PyKaldi
-6. KenLM
-7. Intel® Extension for PyTorch - v1.12.300
-8. Intel® Neural Compressor- v1.14.1
+![asr-flow](assets/asr_pipeline.png)
 
-Note that this reference kit implementation already provides the necessary scripts to setup the software requirements. To utilize these environment scripts, first install Anaconda by following the instructions at the following link:
-[Anaconda installation](https://docs.anaconda.com/anaconda/install/linux/) <br>
-**Note: If the conda is installed using pip, it will not work for this purpose. So please install conda from the above link only.**
+### Training/Inference Using Intel® Optimization Packages
+Training a GAN model, and making inference with it, usually represent compute-intensive tasks. To address these requirements and to gain a performance boost on Intel hardware, in this reference kit the adversarial training includes the implementation of Intel® Extension for PyTorch\*, whereas the inference stage also incorporates the use of Intel® Neural Compressor. 
 
-Set the PATH environment variable:
+For the training process, the machine learning practitioner can easily set the number of epochs as stated [here](#hyperparameter-tuning). This accessible approach, and the performance gains provided by Intel® Extension for PyTorch\*, enable rapidly frequent re-training to analyze the performance of multiple GAN models for transcribing audio signals into phonemized text. Another important aspect of the GAN models trained with Intel® Extension for PyTorch\* is that these models are trained using a FP32 precision.
+
+The inference phase is refined using the optimization features of Intel® Neural Compressor, along with Intel Extension for PyTorch\*. Intel® Neural Compressor functionalities are applied to compress the trained FP32 GAN model via a post-training quantization procedure, converting the FP32 model into an INT8 model, which improves the performance of the model in inference time without compromising its accuracy and supports an efficient deployment of the quantized model in a wide range of Intel® CPUs and GPUs. 
+
+## Get Started
+Start by **defining an environment variable** that will store the workspace path, this can be an existing directory or one to be created in further steps. This ENVVAR will be used for all the commands executed using absolute paths.
+
+[//]: # (capture: baremetal)
+```bash
+export WORKSPACE=$PWD/ai-transcribe-for-behavioral-health
 ```
-export PATH=~/anaconda3/bin:$PATH
+
+Also, it is necessary to define the following environment variables that will be used in later stages.
+
+[//]: # (capture: baremetal)
+```bash
+export OUTPUT_DIR=$WORKSPACE/output 
+export SRC_DIR=$WORKSPACE/src
+export DATA_DIR=$WORKSPACE/data
+export FAIRSEQ_ROOT=$SRC_DIR/fairseq
+export CORPUS_DATA=$FAIRSEQ_ROOT/corpusdata
+export RVAD_ROOT=$SRC_DIR/rVADfast
+export KENLM_BUILD=$SRC_DIR/kenlm/build
+export KENLM_ROOT=$KENLM_BUILD/bin
+export KALDI_TOOLS=$SRC_DIR/pykaldi/tools
+export KALDI_ROOT=$KALDI_TOOLS/kaldi
+export LD_LIBRARY_PATH="/lib:$KALDI_ROOT/tools/openfst-1.6.7/lib:$KALDI_ROOT/src/lib"
+export VCPKG=$SRC_DIR/vcpkg
+export PYTHONPATH=$PYTHONPATH:$FAIRSEQ_ROOT/examples
 ```
 
-### ***Solution setup***
+### Download the Workflow Repository
+Create the workspace directory for the workflow and clone the [AI Transcribe for Behavioral Health](https://github.com/oneapi-src/ai-transcribe) repository inside it.
 
-This reference kit involves some pre-requisite steps (Initial  Steps) to be followed before we start the benchmarking.
-
-![image](assets/overview-detailed-steps.png)
-
-## Repository Clone:
-```sh
-git clone https://github.com/oneapi-src/ai-transcribe
+```bash
+mkdir -p $WORKSPACE && cd $WORKSPACE
 ```
 
-## Data Pre-processing Steps:
-
-#### Creation of a new environment for Data Pre-processing
-It is recommended to deactivate all the existing conda environments and create a separate environment (other than the base) to carry out pre-processing steps to avoid the occurrence of any environmental issues later on.
-```sh
-conda create --name preprocessing
-```
-Once the environment is created, activate the environment by the following command:
-
-```sh
-conda activate preprocessing
+```bash
+git clone https://github.com/oneapi-src/ai-transcribe $WORKSPACE
 ```
 
-### 1. Cloning the Fairseq repo & adding the patch
+### Set Up Conda
+Please follow the instructions below to download and install Miniconda.
 
-```sh
-cd src
-git clone https://github.com/facebookresearch/fairseq
-cd fairseq
-git reset --hard 97b2d8153babe06d3580add6eb512c7e2fbc0fc6
-git apply --reject --whitespace=fix  ../fairseq_patch.patch
+1. Download the required Miniconda installer for Linux.
+   
+   ```bash
+   wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+   ```
+
+2. Install Miniconda.
+   
+   ```bash
+   bash Miniconda3-latest-Linux-x86_64.sh
+   ```
+
+3. Delete Miniconda installer.
+   
+   ```bash
+   rm Miniconda3-latest-Linux-x86_64.sh
+   ```
+
+Please visit [Conda Installation on Linux](https://docs.anaconda.com/free/anaconda/install/linux/) for more details. 
+
+### Set Up Environment
+Execute the next commands to install and setup libmamba as conda's default solver.
+
+```bash
+conda install -n base conda-libmamba-solver
+conda config --set solver libmamba
+```
+
+| Packages | Version | 
+| -------- | ------- |
+| intelpython3_core | 2024.0.0 |
+| python | 3.10.13 |
+| libblas | 3.9.0 |
+| libcblas | 3.9.0 |
+| libfaiss | 1.7.4 |
+| libfaiss-avx2 | 1.7.4 |
+| sqlite | 3.41.1 |
+| gperftools | 2.10 |
+| pip | 23.3.1 |
+| torch | 2.0.1 |
+| torchaudio | 2.0.2 |
+| torchvision | 0.15.2 |
+| intel-extension-for-pytorch | 2.0.100 |
+| neural-compressor | 2.3.1 |
+| numpy | 1.23.1 |
+| pyparsing | 3.1.1 |
+| ninja | 1.11.1.1 |
+| npy-append-array | 0.9.16 |
+| psutil | 5.9.6 |
+| scikit-learn | 1.3.2 |
+| Oauthlib | 3.2.2 |
+| soundfile | 0.12.1 |
+| phonemizer | 3.2.1 |
+| faiss-cpu | 1.7.4 |
+| editdistance | 0.6.2 |
+| fasttext-wheel | 0.9.2 |
+| tensorboardX | 2.6.2.2|
+
+The dependencies required to properly execute this workflow can be found in the yml file [$WORKSPACE/env/intel_env.yml](env/intel_env.yml).
+
+Proceed to create the conda environment.
+
+```bash
+conda env create -f $WORKSPACE/env/intel_env.yml
+```
+
+Environment setup is required only once. This step does not cleanup the existing environment with the same name hence we need to make sure there is no conda environment with the same name. During this setup, `ai_transcription_intel` conda environment will be created with the dependencies listed in the YAML configuration.
+
+Activate the `ai_transcription_intel` conda environment as follows:
+
+```bash
+conda activate ai_transcription_intel
+```
+
+### Automatic Speech Recognition Pipeline
+
+Next, the different stages of the speech-to-text solution are executed. The [How it Works](#how-it-works) section provides a description for each of the steps.
+
+**Note:** Please be aware that the runtime of the pipeline may take up to 5 hours.
+
+### Install Ubuntu Dependencies
+
+The following Ubuntu dependencies are required to successfully configure and install multiple libraries/packages in further steps.
+
+#### Fairseq Pre-requisites:
+
+```bash
 apt install g++ -y
-sudo apt-get install libgl1 -y
-pip install --editable ./
-cd ..
+apt-get install libgl1 -y
 ```
 
-### 2. Install E-Speak:
+#### E-Speak Installation:
 
-```sh
-cd src
+The next dependency is enough to successfully install E-Speak: 
+
+```bash
 apt-get install espeak -y
 ```
 
-### ** Note: Installation of rVAD, Pykaldi, kenlm, FFTW & Flashlight should be carried outside the fairseq folder i.e. in the src folder** 
+#### PyKaldi Pre-requisites:
 
-3. Install rVAD. rVAD is Matlab and Python library for an unsupervised method for robust voice activity detection (rVAD)
+```bash
+apt-get install autoconf automake cmake curl g++ -y
+apt-get install git graphviz libatlas3-base libtool make -y
+apt-get install pkg-config subversion unzip wget zlib1g-dev -y
+apt-get install sox gfortran python2.7 -y 
+```
 
-```sh
-cd src
+#### kenlm Pre-requisites:
+
+```bash
+apt-get install libboost-all-dev libeigen3-dev liblzma-dev -y
+apt-get install zlib1g-dev libbz2-dev bzip2 -y
+```
+
+#### Flashlight Pre-requisites:
+
+```bash
+apt-get install curl zip unzip tar -y
+```
+
+#### Pre-requisite for Audio Data Preparation:
+
+```bash
+apt install zsh -y
+```
+
+#### Pre-requisite for Inference Stage:
+
+```bash
+apt install numactl -y
+```
+
+### Install Fairseq
+
+[//]: # (capture: baremetal)
+```bash
+cd $SRC_DIR
+git clone https://github.com/facebookresearch/fairseq
+cd $FAIRSEQ_ROOT
+git reset --hard 97b2d8153babe06d3580add6eb512c7e2fbc0fc6
+git apply --reject --whitespace=fix  ../fairseq_patch.patch
+pip install --editable ./
+```
+
+### Install rVAD, PyKaldi, kenlm and Flashlight
+
+In this step, the next set of tools is installed: rVAD, PyKaldi, kenlm and Flashlight.
+
+#### Install rVAD
+
+[//]: # (capture: baremetal)
+```bash
+cd $SRC_DIR
 git clone https://github.com/zhenghuatan/rVADfast.git
 ```
 
-### 4. Installation of PyKaldi
-PyKaldi and all of its Python dependencies' should be installed in an isolated environment. 
+#### Install PyKaldi
 
-#### Creation of a new environment for PyKaldi:
-```sh
-conda create --name pykaldienv python=3.8.10
-```
-Once the environment is created, activate the environment by the following command:
+PyKaldi will be installed from the source.
 
-```sh
-conda activate pykaldienv
-```
-Follow the below steps for PyKaldi installation:<br>
+**a) First, clone PyKaldi repository.**
 
-#### a.To install PyKaldi from the source, follow the steps given below.
-```sh
-cd src
+[//]: # (capture: baremetal)
+```bash
+cd $SRC_DIR
 git clone https://github.com/pykaldi/pykaldi.git
-cd pykaldi
-```
-#### b. Install Dependencies
-```sh
-# Ubuntu
-sudo apt-get install autoconf automake cmake curl g++ git graphviz \
-    libatlas3-base libtool make pkg-config subversion unzip wget zlib1g-dev
-``` 
-#### c. Running the commands below will install the Python packages needed for building PyKaldi from the source.
-
-```sh
-pip install --upgrade pip
-pip install --upgrade setuptools
-pip install numpy pyparsing
-pip install ninja  # not required but strongly recommended
-```
-```sh
-cd tools
-sudo apt-get install sox gfortran python2.7
-./check_dependencies.sh  # checks if system dependencies are installed
-./install_protobuf.sh    # installs both the C++ library and the Python package
-./install_clif.sh       # installs both the C++ library and the Python package
-sudo chmod 775 install_mkl.sh
-./install_mkl.sh       # installs the Math Kernel library-related dependencies for Pykaldi installation
-./install_kaldi.sh       # installs the C++ library
-cd ..
-```
-Once the PyKaldi installation is over, deactivate the pykaldienv environment.
-```sh
-conda deactivate
 ```
 
-### 5. Installation of kenlm
+**b) Running the commands below will install the Python packages needed for building PyKaldi from the source.**
 
-```sh
-cd src
+[//]: # (capture: baremetal)
+```bash
+cd $KALDI_TOOLS
+./check_dependencies.sh
+./install_protobuf.sh
+./install_clif.sh
+chmod 775 install_mkl.sh
+./install_mkl.sh 
+./install_kaldi.sh 
+```
+
+#### Install kenlm
+
+kenlm will be built from source.
+
+[//]: # (capture: baremetal)
+```bash
+cd $SRC_DIR
 wget -O - https://kheafield.com/code/kenlm.tar.gz |tar xz
-sudo apt-get install libboost-all-dev
-sudo apt-get -y install libeigen3-dev liblzma-dev zlib1g-dev libbz2-dev
-sudo apt-get install bzip2
-``` 
-### 6. Building kenlm
-```sh
-mkdir kenlm/build
-cd kenlm/build
+mkdir $KENLM_BUILD
+cd $KENLM_BUILD
 cmake ..
 make -j2
 ```
-### 7. Installation of Flashlight
 
-We need to install FFTW first before we install Flashlight. Download FFTW outside fairseq, inside src & extract the file. 
+#### Install Flashlight
 
-```sh
-cd src
-wget http://www.fftw.org/fftw-3.3.10.tar.gz
-tar -xvzf "fftw-3.3.10.tar.gz"
-cd fftw-3.3.10 
-./configure
-make
-sudo make install
-mkdir build && cd build
-cmake ..
-make -j 4
-sudo make install
-sudo cp FFTW3LibraryDepends.cmake /usr/local/lib/cmake/fftw3/
+Flashlight will be built from source, which requires the installation of the MKL and VCPKG packages.
+
+**a) Install VCPKG.**
+
+[//]: # (capture: baremetal)
+```bash
+cd $SRC_DIR
+git clone https://github.com/microsoft/vcpkg
+./vcpkg/bootstrap-vcpkg.sh
+cd $VCPKG
+./vcpkg install intel-mkl fftw3 kenlm arrayfire[cpu] gloo[mpi] openmpi onednn cereal stb gflags glog libsndfile gtest 
 ```
-Navigate back to src:
-```sh
-cd src
-git clone https://github.com/flashlight/flashlight.git
+
+**b) Install Flashlight Sequence.**
+
+[//]: # (capture: baremetal)
+```bash
+cd $FAIRSEQ_ROOT
+git clone https://github.com/flashlight/sequence && cd sequence
+pip install .
 ```
-Please follow the below steps to install MKL:
-```sh
-cd /tmp && wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB && \
-    sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB && \
-    sh -c 'echo deb https://apt.repos.intel.com/mkl all main > /etc/apt/sources.list.d/intel-mkl.list' && \
-    sudo apt-get update && \
-    sudo apt install intel-mkl-64bit-2020.4-912
 
-cd ..
-```
-Also, set the environment variables:
+### Download LibriSpeech and Leipzig Corpora Collection 
 
-export MKLROOT="/opt/intel/mkl" <br>
-export USE_CUDA=0  <br>
-export USE_KENLM=0  <br>
-export USE_MKL=1 <br>
+#### LibriSpeech ASR Corpus
 
-```sh
-cd flashlight/bindings/python
-pip install packaging
-python3 setup.py install
-pip3 install -e .
-``` 
+Proceed to download LibriSpeech ASR Corpus.
 
-The folder structure should be as shown below:
-```sh
-- assests
-- data
-- logs
-- src
-  - fairseq
-  - fftw-3.3.10
-  - flashlight
-  - kenlm
-  - pykaldi
-  - rVADfast
-  - inference_script
-  - Training_Intel.sh
-  - Training_Stock.sh
-  - Inference_Stock.sh
-
-  ```
-
-### 8. Download the pre-trained models:
-
-```sh
-cd fairseq
-wget https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin
-wget https://dl.fbaipublicfiles.com/fairseq/wav2vec/wav2vec_small.pt
-``` 
-
-### 9. Dataset download:
-Please execute the below commands:
-```sh
-cd ..
-cd data
+[//]: # (capture: baremetal)
+```bash
+cd $DATA_DIR
 sh data.sh 
 ```
+
 Navigate inside the LibriSpeech folder:
-```sh
+
+```bash
 cd LibriSpeech
 ```
+
 It should have the below folder structure:
-```
+
+```bash
 LibriSpeech
   |--- dev-clean
   |--- test-clean
-
 ```
 
-### 10. Set the required flags by giving the absolute paths:
+#### Leipzig Corpora Collection 
 
-```sh
-cd src/fairseq
-export FAIRSEQ_ROOT="<absolute path of cloned fairseq>"
-export RVAD_ROOT="<absolute path of rVAD installation>/rVADfast"
-export KENLM_ROOT="<absolute path of kenlm installation>/kenlm/build/bin"
-export KALDI_ROOT="<absolute path of pykaldi installation>/pykaldi/tools/kaldi"
-export LD_LIBRARY_PATH="<absolute path of the miniconda/conda installation>/lib:/<absolute path of the pykaldi installation>/tools/kaldi/tools/openfst-1.6.7/lib:/<absolute path of the pykaldi installation>/tools/kaldi/src/lib"
-export PYTHONPATH=$PYTHONPATH:$FAIRSEQ_ROOT/examples
+Execute the below commands to download and extract the English text corpus from the Leipzig Corpora Collection. 
 
-``` 
-Note: --> Please give the absolute path of the minconda3/conda installation while setting the LD_LIBRARY_PATH depending on your setup.
-
-For example:
-```
-export LD_LIBRARY_PATH="/home/abcuser/miniconda3/lib:/home/abcuser/src/pykaldi/tools/kaldi/tools/openfst-1.6.7/lib:/home/abcuser/src/pykaldi/tools/kaldi/src/lib
+[//]: # (capture: baremetal)
+```bash
+cd $FAIRSEQ_ROOT
+mkdir $CORPUS_DATA
+cd $CORPUS_DATA
+wget https://downloads.wortschatz-leipzig.de/corpora/eng_news_2005_10K.tar.gz
+tar -xvf eng_news_2005_10K.tar.gz
 ```
 
-### 11. Installation of some dependent Python libraries in the pre-process environment:
-```sh
-pip install torch==1.11.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
-pip install torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cpu
-pip install soundfile==0.10.3.post1
-pip install npy-append-array==0.9.13
-pip install phonemizer
-pip install faiss-cpu
+### Download Pre-trained Models for Audio and Text Preprocessing 
+
+[//]: # (capture: baremetal)
+```bash
+cd $FAIRSEQ_ROOT
+wget https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin
+wget https://dl.fbaipublicfiles.com/fairseq/wav2vec/wav2vec_small.pt
 ```
 
-### 12. Audio data pre-process:  
-Run the following command to preprocess the audio data and generate a tsv file.
-```sh
-python $FAIRSEQ_ROOT/examples/wav2vec/wav2vec_manifest.py /<absolute path of the repo>/data/LibriSpeech/dev-clean --ext flac --dest ./preprocessed_level1 --valid-percent 0
-``` 
-Check that the preprocessed_level1 folder is generated with the train.tsv 
+### Create Manifest File for Training Set
 
+In this step, training data preprocessing begins. The training process will be conducted based on the *development set* from the LibriSpeech ASR corpus. This [subsection](#speech-audio-dataset) offers more details about such dataset.
 
-13. Run the following command to generate the vads file.
+Run the following command to preprocess the audio data and generate a `tsv` file containing the audio training dataset.
 
-```sh
+[//]: # (capture: baremetal)
+```bash
+cd $FAIRSEQ_ROOT
+python $FAIRSEQ_ROOT/examples/wav2vec/wav2vec_manifest.py $DATA_DIR/LibriSpeech/dev-clean --ext flac --dest ./preprocessed_level1 --valid-percent 0
+```
+
+Check that the `$FAIRSEQ_ROOT/preprocessed_level1` folder is generated with the `train.tsv` file.
+
+### Remove Silence
+
+First, deploy the voice activity detection task which will generate a `vads` file inside `preprocessed_level1 folder`.
+
+[//]: # (capture: baremetal)
+```bash
+cd $FAIRSEQ_ROOT
 python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/vads.py -r $RVAD_ROOT <./preprocessed_level1/train.tsv> ./preprocessed_level1/train.vads
+```
 
-``` 
+Finally, run the following command to remove silence from audio samples.
 
-
-14. Run the following command to remove silence from audio samples.
-
-```sh
+[//]: # (capture: baremetal)
+```bash
 python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/remove_silence.py --tsv ./preprocessed_level1/train.tsv --vads ./preprocessed_level1/train.vads --out ./removed_silence_data
-``` 
+```
 
+### Create Manifest File to Split Silence-Free Training Set
 
-15. Again run the manifest file to generate the train.tsv file with a validation percentage of 0.3
+The audio training dataset with silence sections removed is split to build a validation set based on a percentage of 0.3.
 
-```sh
+[//]: # (capture: baremetal)
+```bash
+cd $FAIRSEQ_ROOT
 python $FAIRSEQ_ROOT/examples/wav2vec/wav2vec_manifest.py ./removed_silence_data --ext flac --dest ./preprocessed_level2 --valid-percent 0.3
-``` 
-Check that valid.tsv and train.tsv files are generated in the preprocessed_level2 folder
+```
 
+Check that `train.tsv` and `valid.tsv` files are generated in the `$FAIRSEQ_ROOT/preprocessed_level2` folder.
 
-### 16.Audio pre-processing to match phonemicized text data 
-Next, we need to preprocess the audio data to better match phonemicized text data.
-```sh
+### Audio Data Preprocessing
+
+Convert audio data into segmented representations to better match phonemized text data during adversarial training.
+
+[//]: # (capture: baremetal)
+```bash
+cd $FAIRSEQ_ROOT
 zsh $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/prepare_audio.sh ./preprocessed_level2 ./prepared_audio wav2vec_small.pt
 ```
- 
 
-### 17. Preparation of text data:
+### Text Data Preprocessing
 
-Execute the below commands to download and extract the English corpus data.
-```sh
-cd fairseq
-mkdir corpusdata
-cd corpusdata
-wget https://pcai056.informatik.uni-leipzig.de/downloads/corpora/eng_news_2005_10K.tar.gz 
-tar -xvf eng_news_2005_10K.tar.gz
-cd ..
+The next command is useful to convert the text corpus into phonemized text. This is a one-time activity for preparing text phenomes. The same phonemized text can be used repeatedly for different experiments.
+
+[//]: # (capture: baremetal)
+```bash
+cd $FAIRSEQ_ROOT
+zsh $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/prepare_text.sh en $FAIRSEQ_ROOT/corpusdata/eng_news_2005_10K-sentences.txt $FAIRSEQ_ROOT/prepared_text 100 espeak lid.176.bin
 ```
 
-```sh
-zsh $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/prepare_text.sh en /<absolute path of repo>/src/fairseq/corpusdata/eng_news_2005_10K-sentences.txt /<absolute path of the cloned fairseq>/prepared_text 100 espeak lid.176.bin
- 
+Once the text data is prepared, we need to copy the `dict.phn.txt` file from the `prepared_text/phones` directory to the `prepared_audio/precompute_pca512_cls128_mean_pooled` directory. Next, `the dict.phn.txt` file is copied again but to the `prepared_audio folder`.
+
+[//]: # (capture: baremetal)
+```bash
+cp $FAIRSEQ_ROOT/prepared_text/phones/dict.phn.txt $FAIRSEQ_ROOT/prepared_audio/precompute_pca512_cls128_mean_pooled
+cp $FAIRSEQ_ROOT/prepared_text/phones/dict.phn.txt $FAIRSEQ_ROOT/prepared_audio/
 ```
 
-This is a one-time activity for preparing text phenomes. The same can be used repeatedly for different experiments.
-Once the text data is prepared, we need to copy the dict.phn.txt from the phones folder under the prepared_text folder to the precompute_pca512_cls128_mean_pooled folder under prepared_audio.
+## Supported Runtime Environment
+The execution of this reference kit is compatible with the following environments:
+* Bare Metal
 
-```sh
-cp <absolute path of fairseq>/prepared_text/phones/dict.phn.txt <absolute path of fairseq>/prepared_audio/precompute_pca512_cls128_mean_pooled
-cp <absolute path of fairseq>/prepared_text/phones/dict.phn.txt <absolute path of fairseq>/prepared_audio/
-```
+---
 
-Deactivate the preprocessing environment:
-```sh
-conda deactivate
-```
-## Stock environment setup
+### Run Using Bare Metal
 
-Follow the below conda installation commands to setup the stock environment for model training and prediction.
+#### Set Up System Software
 
-### Note:
-Deactivate all the other environments including the base before creating the stock environment. Showing for the base environment here.
+Our examples use the `conda` package and environment on your local computer. If you don't already have `conda` installed or the `conda` environment created, go to [Set Up Conda*](#set-up-conda) or see the [Conda* Linux installation instructions](https://docs.conda.io/projects/conda/en/stable/user-guide/install/linux.html).
 
-```sh
-(base) abcuser:~$ conda deactivate
-```
->Note: It is assumed that the present working directory is the root directory of this code repository
+#### Run Workflow
+The following subsections provide the commands to make an optimized execution of the ASR system presented in this reference kit based on Intel® Extension for PyTorch\* and Intel® Neural Compressor. Please check the [How it Works](#how-it-works) section for more details.
 
-```sh
-conda env create --file env/stock/speech-stock.yml
-```
-conda environment called speech-stock would be created after running this.
+---
 
-This command utilizes the dependencies found in the `env/stock/speech-stock.yml` file to create an environment as follows:
+#### Additional installations and setups required by the training and inference processes
 
-**YAML file**                              | **Environment Name**         |  **Configuration** |
-| :---: | :---: | :---: |
-| `env/stock/speech-stock.yml`             | speech-stock                | Python=3.8.10 with PyTorch 1.11.0
-
-Use the following command to activate the stock environment:
-```sh
-conda activate speech-stock
-```
-### Additional steps for Stock Environment setup :
-Please run the below commands once the environment is activated :
-```sh
-cd fairseq
+[//]: # (capture: baremetal)
+```bash
+cd $FAIRSEQ_ROOT
 pip install --editable ./
 pip install https://github.com/kpu/kenlm/archive/master.zip
-pip install editdistance
-sudo apt install numactl
 ```
 
-## Setting Epochs 
+[//]: # (capture: baremetal)
+```bash
+cd $SRC_DIR
+python edit_scripts.py
+```
 
-**Configuration** <br>
-Before we start Training, we need to set the no. of epochs in the config file called w2vu.yaml. It can be found in the below path:
+#### Unsupervised Adversarial Training Using Intel® Extension for PyTorch\*
+Intel® Extension for PyTorch\* will be implemented during the unsupervised adversarial training stage of this reference kit ASR system.
 
-Path: /examples/wav2vec/unsupervised/config/gan
+#### Hyperparameter Tuning
+
+**Setting Epochs** <br>
+Before we start Training, we need to set the number of epochs in the config file called `w2vu.yaml`. It can be found in the below path:
+
+```bash
+$FAIRSEQ_ROOT/examples/wav2vec/unsupervised/config/gan
+```
 
 Open the file and head to the optimization section. Here we need to update max_update & max_epoch. We carried out some experiments & found some apt values for these parameters. 
 
-```sh
+```bash
 N = (no. of Epochs) / 50
 max_update = 950 x N
 ```
 It is better to give the value of epochs in the multiples (N) of 50. Let's say that we decided to run for 100 epochs. In that case, N would turn out to be 2. Then the max_update would be 1900.
 
-```sh
+```bash
 optimization:
   max_update: 1900
   max_epoch : 100
@@ -498,287 +609,245 @@ optimization:
   lr: [0]
 ```
 
-## Benchmarking :
-One of the important aspects in this enterprise scenario is to improve the MLOps time for developing and deploying new models due to its ever-increasing size of datasets over a period. To address this, the Intel® One API libraries - Intel PyTorch Extension (IPEX) & Intel Neural Compressor (INC) benchmarked against stock libraries. Benchmarking experiments are done for Inference. Inference Benchmarking scripts are placed in the src folder.
+**Note:** The machine learning practitioner can analyze different sections of the `w2vu.yaml` to see wheter other hyperparameters need to be changed.
 
-### Model building process
+#### Start Training
 
-Open the Training_Stock.sh script in src folder. Update the respective paths of TASK_DATA, TEXT_DATA, KENLM_PATH, OUT_PATH & CONFIG_PATH with their absolute paths. 
+Run the Training_Intel.sh file to start the training process.
 
-```sh
-# Path to prepared_audio/precompute_pca512_cls128_mean_pooled - Prepared Audio 
-TASK_DATA='<absolute path of cloned fairseq>/prepared_audio/precompute_pca512_cls128_mean_pooled'
-
-# path to fairseq-preprocessed GAN data (phones dir) - Prepared Text data
-TEXT_DATA='<absolute path of cloned fairseq>/prepared_text/phones'
-
-# KenLM 4-gram phoneme language model (LM data = GAN data here)
-KENLM_PATH='<absolute path of  cloned fairseq>/prepared_text/phones/lm.phones.filtered.04.bin'
-
-# Path where the trained model will be saved
-OUT_PATH='<absolute path of cloned fairseq>/model'
-
-# Path to the config file of the unsupervised gan model
-CONFIG_PATH='<absolute path of cloned fairseq >/examples/wav2vec/unsupervised/config/gan'
+[//]: # (capture: baremetal)
+```bash
+cd $SRC_DIR
+sh Training_Intel.sh
 ```
 
-Run the Training_Stock.sh file to start the training.
+The trained GAN model will be saved in the `$OUTPUT_DIR/model` folder with the name `checkpoint_last.pt`.
 
-```sh
-cd src
-sh Training_stock.sh
-```
+#### Inference Using Intel® Extension for PyTorch\* and Intel® Neural Compressor
 
-**Expected Output**<br>
-Training time in seconds would be generated at the end of the training module. For example, here it is 5834.
+Along with  Intel® Extension for PyTorch\*, Intel® Neural Compressor will be used to boost the inference performance of this reference kit ASR system. In particular, Intel® Neural Compressor converts the FP32 GAN model into an INT8 model.
 
-```
-start time >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: 05:14:52 AM
-Current start time : 05:14:52
-/src/gan_out
-[2022-06-30 05:15:39,242][HYDRA] Launching 60 jobs locally
-.......................................................
-......................................................
-Current end  time................................... : 06:52:06
-5834
-end time >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: 06:52:06 AM
-```
+#### Test Set Preprocessing
 
+Before running the inference stage, it is necessary to preprocess the test audio data in the same way that the training audio data. To accomplish this, steps 7 to 10 from this reference kit pipeline will be applied, but now using the test set from the LibriSpeech ASR corpus. See the [How it Works](#how-it-works) section for more information about this reference kit pipeline, and the [Speech Audio Dataset](#speech-audio-dataset) subsection to learn more about the test set.
 
-**Stock Inference Benchmarking**
+**Note:** The four test audio data preprocessing steps described below, generate files called `train.npy`, `train.lenghts`, `train.tsv` and `train.vads` by default, but such files formally refer to the test set. At the end of the preprocessing stage, the files `train.npy` and `train.lenghts` are renamed to `test.npy` and `test.lenghts`, respectively, with the goal to align them to the inference process in further steps. As the  `train.tsv`  and `train.vads` files are just useful in intermediate steps of the preprocessing stage, it is not necessary to rename them.
 
-Once the models are saved, we need to use them for inferencing. Open the 'Inference_Stock.sh' file in the src folder. 
-Set the respective path for TASK_DATA, MODEL_PATH & test_eval_result. Also, batch size can be set using fairseq.dataset.batch_size
+1. Create Manifest File for the Test Set:
 
+   [//]: # (capture: baremetal)
+   ```bash
+   cd $FAIRSEQ_ROOT
+   python $FAIRSEQ_ROOT/examples/wav2vec/wav2vec_manifest.py $DATA_DIR/LibriSpeech/test-clean --ext flac --dest ./preprocessed_level_test1 --valid-percent 0
+   ```
 
-```sh
-# Path to audio/precompute_pca512_cls128_mean_pooled  
-TASK_DATA='<absolute path of cloned fairseq>/prepared_audio/precompute_pca512_cls128_mean_pooled'
+2. Remove Silence 
 
-#Stock Model - please give the same path where the model was saved earlier during training
-MODEL_PATH='<absolute path of cloned fairseq>/model/checkpoint_best.pt'
+   [//]: # (capture: baremetal)
+   ```bash
+   cd $FAIRSEQ_ROOT
+   python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/vads.py -r $RVAD_ROOT <./preprocessed_level_test1/train.tsv> ./preprocessed_level_test1/train.vads
+   python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/remove_silence.py --tsv ./preprocessed_level_test1/train.tsv --vads ./preprocessed_level_test1/train.vads --out ./removed_silence_test_data
+   ```
 
+3. Create Manifest File for the Silence-Free Test Set:
 
-test_eval_result="<absolute path of clonned repo>/test_eval_result"
+   Different from what we did in this step for the training set (see [here](#create-manifest-file-to-split-silence-free-training-set)), in this case the split is not applied as we are working with the test set.
 
-# To set the batch size.  
-fairseq.dataset.batch_size=1 \
+   [//]: # (capture: baremetal)
+   ```bash
+   cd $FAIRSEQ_ROOT
+   python $FAIRSEQ_ROOT/examples/wav2vec/wav2vec_manifest.py ./removed_silence_test_data --ext flac --dest ./preprocessed_level_test2 --valid-percent 0
+   ```
 
-```
+4. Test Audio Data Preprocessing:
 
-We perform Inference with Numactl optimization.Numactl is used to bind the processes to a certain number of cores in the processor & also to bind the memory to certain nodes.
+   [//]: # (capture: baremetal)
+   ```bash
+   cd $FAIRSEQ_ROOT
+   zsh $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/prepare_audio.sh ./preprocessed_level_test2 ./prepared_audio wav2vec_small.pt
+   mv $FAIRSEQ_ROOT/prepared_audio/precompute_pca512_cls128_mean_pooled/train.npy $FAIRSEQ_ROOT/prepared_audio/precompute_pca512_cls128_mean_pooled/test.npy
+   mv $FAIRSEQ_ROOT/prepared_audio/precompute_pca512_cls128_mean_pooled/train.lengths $FAIRSEQ_ROOT/prepared_audio/precompute_pca512_cls128_mean_pooled/test.lengths
+   ```
 
-Note we need to be in fairseq folder to run the inference as we have built the fairseq from there.
-```sh
-cd src/fairseq
-```
+#### Inference
 
-#### Inference with Numactl optimization:<br>
-```sh
-numactl -C "0-3" --membind=0 sh ../Inference_Stock.sh 
+The inference process is triggered by runing the `Inference_Intel.sh` file which is localed inside the `$SRC_DIR` folder. In the `Inference_Intel.sh` file, the batch size can be set by modifying the line `fairseq.dataset.batch_size=1 \`. By default, the batch size is set to 1.
+
+Execute the inference stage as follows:
+
+[//]: # (capture: baremetal)
+```bash
+cd $FAIRSEQ_ROOT
+numactl -C "0-3" --membind=0 sh ../Inference_Intel.sh 
 ```
 Here the processes are confined to 4 cores of the CPU and we use only the first node of disk memory. Similarly, depending on your system's configuration, you can modify the command accordingly.
 
-### Expected Output
+As a result of the inference process, the input audio data is converted into phonemized text by the trained GAN model. The phonemized audio data is saved in the file `test.txt` under the `${OUTPUT_DIR}/test_eval_result` folder.
 
-Inference time in seconds would be generated at the end of the execution. A sample inference log is shown below:
+#### Clean Up Bare Metal
+The next commands are useful to remove the previously generated conda environment, as well as the dataset and the multiple models and files created during the workflow execution. Before proceeding with the cleanup process, it is recommended to back up the data you want to preserve.
 
-```
-[2022-10-18 12:36:46,598][__main__][INFO] - {'_name': None, 'fairseq': {'_name': None, 'common': {'_name': None, 'no_progress_bar': False, 'log_interval': 100, 'log_format': None, 'log_file': None, 'aim_repo': None, 'aim_run_hash': None, 'tensorboard_logdir': None, 'wandb_project': None, 'azureml_logging': False, 'seed': 1, 'cpu': True, 'intel': False, 'inc': True, 'tpu': False, 'bf16': False, 'memory_efficient_bf16': False, 'fp16': False, 'memory_efficient_fp16': False, 'fp16_no_flatten_grads': False, 'fp16_init_scale': 128, 'fp16_scale_window': None, 'fp16_scale_tolerance': 0.0, 'on_cpu_convert_precision': False, 'min_loss_scale': 0.0001, 'threshold_loss_scale': None, 'amp': False, 'amp_batch_retries': 2, 'amp_init_scale': 128, 'amp_scale_window': None, 'user_dir': '/home/azureuser/fairseq1/examples/wav2vec/unsupervised/', 'empty_cache_freq': 0, 'all_gather_list_size': 16384, 'model_parallel_size': 1, 'quantization_config_path': None, 'profile': False, 'reset_logging': False, 'suppress_crashes': False, 'use_plasma_view': False, 'plasma_path': '/tmp/plasma'}, 'common_eval': {'_name': None, 'path': '/home/azureuser/Speech_Patch/output_models_stock/gan_out/checkpoint_best.pt', 'post_process': None, 'quiet': True, 'model_overrides': '{}', 'results_path': None}, 'distributed_training': {'_name': None, 'distributed_world_size': 1, 'distributed_num_procs': 1, 'distributed_rank': 0, 'distributed_backend': 'nccl', 'distributed_init_method': None, 'distributed_port': -1, 'device_id': 0, 'distributed_no_spawn': False, 'ddp_backend': pytorch_ddp, 'ddp_comm_hook': none, 'bucket_cap_mb': 25, 'fix_batches_to_gpus': False, 'find_unused_parameters': False, 'gradient_as_bucket_view': False, 'fast_stat_sync': False, 'heartbeat_timeout': -1, 'broadcast_buffers': False, 'slowmo_momentum': None, 'slowmo_base_algorithm': 'localsgd', 'localsgd_frequency': 3, 'nprocs_per_node': 1, 'pipeline_model_parallel': False, 'pipeline_balance': None, 'pipeline_devices': None, 'pipeline_chunks': 0, 'pipeline_encoder_balance': None, 'pipeline_encoder_devices': None, 'pipeline_decoder_balance': None, 'pipeline_decoder_devices': None, 'pipeline_checkpoint': never, 'zero_sharding': none, 'fp16': '${common.fp16}', 'memory_efficient_fp16': '${common.memory_efficient_fp16}', 'tpu': '${common.tpu}', 'no_reshard_after_forward': False, 'fp32_reduce_scatter': False, 'cpu_offload': False, 'use_sharded_state': False, 'not_fsdp_flatten_parameters': False}, 'dataset': {'_name': None, 'num_workers': 1, 'skip_invalid_size_inputs_valid_test': False, 'max_tokens': 130695, 'batch_size': 4096, 'required_batch_size_multiple': 8, 'required_seq_len_multiple': 1, 'dataset_impl': None, 'data_buffer_size': 10, 'train_subset': 'train', 'valid_subset': 'valid', 'combine_valid_subsets': None, 'ignore_unused_valid_subsets': False, 'validate_interval': 1, 'validate_interval_updates': 0, 'validate_after_updates': 0, 'fixed_validation_seed': None, 'disable_validation': False, 'max_tokens_valid': '${dataset.max_tokens}', 'batch_size_valid': '${dataset.batch_size}', 'max_valid_steps': None, 'curriculum': 0, 'gen_subset': 'train', 'num_shards': 1, 'shard_id': 0, 'grouped_shuffling': False, 'update_epoch_batch_itr': '${dataset.grouped_shuffling}', 'update_ordered_indices_seed': False}, 'optimization': {'_name': None, 'max_epoch': 0, 'max_update': 0, 'stop_time_hours': 0.0, 'clip_norm': 0.0, 'sentence_avg': False, 'update_freq': [1], 'lr': [0.25], 'stop_min_lr': -1.0, 'use_bmuf': False, 'skip_remainder_batch': False}, 'checkpoint': {'_name': None, 'save_dir': 'checkpoints', 'restore_file': 'checkpoint_last.pt', 'continue_once': None, 'finetune_from_model': None, 'reset_dataloader': False, 'reset_lr_scheduler': False, 'reset_meters': False, 'reset_optimizer': False, 'optimizer_overrides': '{}', 'save_interval': 1, 'save_interval_updates': 0, 'keep_interval_updates': -1, 'keep_interval_updates_pattern': -1, 'keep_last_epochs': -1, 'keep_best_checkpoints': -1, 'no_save': False, 'no_epoch_checkpoints': False, 'no_last_checkpoints': False, 'no_save_optimizer_state': False, 'best_checkpoint_metric': 'loss', 'maximize_best_checkpoint_metric': False, 'patience': -1, 'checkpoint_suffix': '', 'checkpoint_shard_count': 1, 'load_checkpoint_on_all_dp_ranks': False, 'write_checkpoints_asynchronously': False, 'model_parallel_size': '${common.model_parallel_size}'}, 'bmuf': {'_name': None, 'block_lr': 1.0, 'block_momentum': 0.875, 'global_sync_iter': 50, 'warmup_iterations': 500, 'use_nbm': False, 'average_sync': False, 'distributed_world_size': '${distributed_training.distributed_world_size}'}, 'generation': {'_name': None, 'beam': 5, 'nbest': 1, 'max_len_a': 0.0, 'max_len_b': 200, 'min_len': 1, 'match_source_len': False, 'unnormalized': False, 'no_early_stop': False, 'no_beamable_mm': False, 'lenpen': 1.0, 'unkpen': 0.0, 'replace_unk': None, 'sacrebleu': False, 'score_reference': False, 'prefix_size': 0, 'no_repeat_ngram_size': 0, 'sampling': False, 'sampling_topk': -1, 'sampling_topp': -1.0, 'constraints': None, 'temperature': 1.0, 'diverse_beam_groups': -1, 'diverse_beam_strength': 0.5, 'diversity_rate': -1.0, 'print_alignment': None, 'print_step': False, 'lm_path': None, 'lm_weight': 0.0, 'iter_decode_eos_penalty': 0.0, 'iter_decode_max_iter': 10, 'iter_decode_force_max_iter': False, 'iter_decode_with_beam': 1, 'iter_decode_with_external_reranker': False, 'retain_iter_history': False, 'retain_dropout': False, 'retain_dropout_modules': None, 'decoding_format': None, 'no_seed_provided': False, 'eos_token': None}, 'eval_lm': {'_name': None, 'output_word_probs': False, 'output_word_stats': False, 'context_window': 0, 'softmax_batch': 9223372036854775807}, 'interactive': {'_name': None, 'buffer_size': 0, 'input': '-'}, 'model': '???', 'task': {'_name': 'unpaired_audio_text', 'labels': 'phn', 'data': '/home/azureuser/fairseq1/inference_scripts/test_data/precompute_pca512_cls128_mean_pooled', 'sort_by_length': False, 'shuffle': False, 'text_data': ''}, 'criterion': None, 'optimizer': None, 'lr_scheduler': None, 'scoring': None, 'bpe': None, 'tokenizer': None, 'ema': {'_name': None, 'store_ema': False, 'ema_decay': 0.9999, 'ema_start_update': 0, 'ema_seed_model': None, 'ema_update_freq': 1, 'ema_fp32': False}}, 'lm_weight': 2.0, 'w2l_decoder': <DecoderType.VITERBI: 1>, 'kaldi_decoder_config': None, 'lexicon': None, 'lm_model': None, 'unit_lm': False, 'beam_threshold': 50.0, 'beam_size_token': 100.0, 'beam': 1500, 'nbest': 1, 'word_score': 1.0, 'unk_weight': -inf, 'sil_weight': 0.0, 'targets': 'wrd', 'results_path': '/home/azureuser/test_env_eval_result_50_epochs_stock', 'post_process': 'silence', 'vocab_usage_power': 2.0, 'viterbi_transcript': None, 'min_lm_ppl': 0.0, 'min_vt_uer': 0.0, 'blank_weight': 0.0, 'blank_mode': 'set', 'sil_is_blank': False, 'unsupervised_tuning': False, 'is_ax': False, 'job_logging_cfg': {'version': 1, 'formatters': {'simple': {'format': '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'}}, 'handlers': {'console': {'class': 'logging.StreamHandler', 'formatter': 'simple', 'stream': 'ext://sys.stdout'}, 'file': {'class': 'logging.FileHandler', 'formatter': 'simple', 'filename': 'w2vu_generate.log'}}, 'root': {'level': 'INFO', 'handlers': ['console', 'file']}, 'disable_existing_loggers': False}}
-[2022-10-18 12:36:46,614][__main__][INFO] - | loading model(s) from /home/azureuser/Speech_Patch/output_models_stock/gan_out/checkpoint_best.pt
-
-Batch Size used here is  1
-Average Inference Time Taken Fp32 -->  0.4967531681060791
-```
-
-## **Optimizing the E2E solution with Intel® Extension for PyTorch**
-
-Although AI delivers a solution to address AI-based Transcribe, on a production scale implementation with millions or billions of voice samples demands more compute power without leaving any performance on the table. Under this scenario, speech-to-text models are essential for identifying and extracting entities which will enable the analyst to take appropriate decisions. In order to derive the most insightful and beneficial actions to take, they will need to study and analyze the data generated through various feature sets and algorithms, usage of some of the cutting edge frameworks thus requiring frequent re-runs of the algorithms under many different parameter sets. To utilize all the hardware resources efficiently, Software optimizations cannot be ignored.
-
-This reference kit solution extends to demonstrate the advantages of using the Intel AI Analytics Toolkit on the task of building a model for speech-to-text conversion. The savings gained from using the Intel optimizations for PyTorch can lead an analyst to more efficiently explore and understand data, leading to better and more precisely targeted solutions when it comes to conversion of Speech to Text use cases.
-
-![image](assets/intel-optimization.png)
-
-### **Optimized software components** 
-
-### Intel®  Extension for PyTorch (IPEX)
-Intel® Extension for PyTorch* extends PyTorch with optimizations for an extra performance boost on Intel hardware.Intel® Extension for PyTorch* is loaded as a Python module for Python programs or linked as a C++ library for C++ programs. Designed for data scientists & machine learning engineers, Intel® Extension for PyTorch is a seamless way to speed up your applications for machine learning to solve real-world problems.
-
-## Software Requirements
-| Package                              | **Intel® Python**         
-| :---: | :---: 
-| Python                                  | 3.8.10  |       
-| Intel® Extension for PyTorch                 | 1.12.300 |    
-
-
-### Optimized Solution setup <br>
-Follow the below conda installation commands for environment creation and inference.
-
->Note: It is assumed that the present working directory is the root directory of this code repository
-
-Deactivate all the other environments including base before creating the intel-environment. Showing for base environment here.
-Similarly please do it for all the other existing environments.
-
-```sh
-conda deactivate
-```
-Run the below command to create speech-intel environment:
-```sh
-conda env create --file env/intel/speech-intel.yml
+```bash
+conda deactivate #Run this line if the ai_transcription_intel environment is still active
+conda env remove -n ai_transcription_intel
+rm $OUTPUT_DIR $DATA_DIR $WORKSPACE -rf
 ```
 
-This command utilizes the dependencies found in the `env/intel/speech-intel.yml` file to create an environment as follows:
-
-**YAML file**                              | **Environment Name**         |  **Configuration** |
-| :---: | :---: | :---: |
-| `env/intel/speech-intel.yml`             | speech-intel                | Python=3.8.10 with Intel® Extension for PyTorch (IPEX) 1.12.300
-
-
-Use the following command to activate the environment that was created:
-```sh
-conda activate speech-intel
-```
-### Additional steps:
-Please run the below commands once the environment is activated :
-```sh
-cd fairseq
-pip install --editable ./
-pip install https://github.com/kpu/kenlm/archive/master.zip
-pip install editdistance
-```
-
-### Optimized Solution Implementation
-
-## Model Inference process with Intel® optimizations - 
-The stock model generated is utilized for inference in the Intel environment also. It is quantized to provide faster inference using Intel® Neural Compressor (INC). INC is an open-source Python library that runs on Intel CPUs and GPUs and delivers unified interfaces across multiple deep-learning frameworks for popular network compression technologies such as quantization, pruning, and knowledge distillation.
-INC is used to quantize the FP32 Model to the INT8 Model. This also reduces the model size. In the present context, INC along with Intel® Extension for PyTorch (IPEX 1.12.300) is used for benchmarking.
-
-Open Inference_Intel.sh shell script in src folder. 
-Set the respective path for TASK_DATA, MODEL_PATH & test_eval_result. Also batch size can be set using 'fairseq.dataset.batch_size'.
-
-```sh
-# Path to audio/precompute_pca512_cls128_mean_pooled  
-TASK_DATA='<absolute path of cloned fairseq>/prepared_audio/precompute_pca512_cls128_mean_pooled'
-
-# Model
-MODEL_PATH='<absolute path of cloned fairseq>/model/stock/checkpoint_best.pt'
-
-test_eval_result="<absolute path of repo>/test_eval_result"
-
-# To set the batch size.  
-fairseq.dataset.batch_size=1 \
-```
-Note we need to be in fairseq folder to run the inference as we have built the fairseq from there.
-```sh
-cd src/fairseq
-```
-
-#### Inference with Numactl optimization:<br>
-```sh
-numactl -C "0-3" --membind=0 sh ../Inference_Intel.sh 
-```
+---
 
 ### Expected Output
-Inference time of FP32 in seconds would be generated at the end of the execution. Sample output as shown below:
+A successful execution of the different stages of this workflow should produce outputs similar to the following:
 
-```sh
-[2022-09-30 04:54:34,363][__main__][INFO] - {'_name': None, 'fairseq': {'_name': None, 'common': {'_name': None, 'no_progress_bar': False, 'log_interval': 100, 'log_format': None, 'log_file': None, 'aim_repo': None, 'aim_run_hash': None, 'tensorboard_logdir': None, 'wandb_project': None, 'azureml_logging': False, 'seed': 1, 'cpu': True, 'intel': True, 'inc': True, 'tpu': False, 'bf16': False, 'memory_efficient_bf16': False, 'fp16': False, 'memory_efficient_fp16': False, 'fp16_no_flatten_grads': False, 'fp16_init_scale': 128, 'fp16_scale_window': None, 'fp16_scale_tolerance': 0.0, 'on_cpu_convert_precision': False, 'min_loss_scale': 0.0001, 'threshold_loss_scale': None, 'amp': False, 'amp_batch_retries': 2, 'amp_init_scale': 128, 'amp_scale_window': None, 'user_dir': '/home/azureuser/fairseq1/examples/wav2vec/unsupervised/', 'empty_cache_freq': 0, 'all_gather_list_size': 16384, 'model_parallel_size': 1, 'quantization_config_path': None, 'profile': False, 'reset_logging': False, 'suppress_crashes': False, 'use_plasma_view': False, 'plasma_path': '/tmp/plasma'}, 'common_eval': {'_name': None, 'path': '/home/azureuser/Speech_Patch/output_models_intel/gan_out/checkpoint_last.pt', 'post_process': None, 'quiet': True, 'model_overrides': '{}', 'results_path': None}, 'distributed_training': {'_name': None, 'distributed_world_size': 1, 'distributed_num_procs': 1, 'distributed_rank': 0, 'distributed_backend': 'nccl', 'distributed_init_method': None, 'distributed_port': -1, 'device_id': 0, 'distributed_no_spawn': False, 'ddp_backend': pytorch_ddp, 'ddp_comm_hook': none, 'bucket_cap_mb': 25, 'fix_batches_to_gpus': False, 'find_unused_parameters': False, 'gradient_as_bucket_view': False, 'fast_stat_sync': False, 'heartbeat_timeout': -1, 'broadcast_buffers': False, 'slowmo_momentum': None, 'slowmo_base_algorithm': 'localsgd', 'localsgd_frequency': 3, 'nprocs_per_node': 1, 'pipeline_model_parallel': False, 'pipeline_balance': None, 'pipeline_devices': None, 'pipeline_chunks': 0, 'pipeline_encoder_balance': None, 'pipeline_encoder_devices': None, 'pipeline_decoder_balance': None, 'pipeline_decoder_devices': None, 'pipeline_checkpoint': never, 'zero_sharding': none, 'fp16': '${common.fp16}', 'memory_efficient_fp16': '${common.memory_efficient_fp16}', 'tpu': '${common.tpu}', 'no_reshard_after_forward': False, 'fp32_reduce_scatter': False, 'cpu_offload': False, 'use_sharded_state': False, 'not_fsdp_flatten_parameters': False}, 'dataset': {'_name': None, 'num_workers': 1, 'skip_invalid_size_inputs_valid_test': False, 'max_tokens': 130695, 'batch_size': 1, 'required_batch_size_multiple': 8, 'required_seq_len_multiple': 1, 'dataset_impl': None, 'data_buffer_size': 10, 'train_subset': 'train', 'valid_subset': 'valid', 'combine_valid_subsets': None, 'ignore_unused_valid_subsets': False, 'validate_interval': 1, 'validate_interval_updates': 0, 'validate_after_updates': 0, 'fixed_validation_seed': None, 'disable_validation': False, 'max_tokens_valid': '${dataset.max_tokens}', 'batch_size_valid': '${dataset.batch_size}', 'max_valid_steps': None, 'curriculum': 0, 'gen_subset': 'train', 'num_shards': 1, 'shard_id': 0, 'grouped_shuffling': False, 'update_epoch_batch_itr': '${dataset.grouped_shuffling}', 'update_ordered_indices_seed': False}, 'optimization': {'_name': None, 'max_epoch': 0, 'max_update': 0, 'stop_time_hours': 0.0, 'clip_norm': 0.0, 'sentence_avg': False, 'update_freq': [1], 'lr': [0.25], 'stop_min_lr': -1.0, 'use_bmuf': False, 'skip_remainder_batch': False}, 'checkpoint': {'_name': None, 'save_dir': 'checkpoints', 'restore_file': 'checkpoint_last.pt', 'continue_once': None, 'finetune_from_model': None, 'reset_dataloader': False, 'reset_lr_scheduler': False, 'reset_meters': False, 'reset_optimizer': False, 'optimizer_overrides': '{}', 'save_interval': 1, 'save_interval_updates': 0, 'keep_interval_updates': -1, 'keep_interval_updates_pattern': -1, 'keep_last_epochs': -1, 'keep_best_checkpoints': -1, 'no_save': False, 'no_epoch_checkpoints': False, 'no_last_checkpoints': False, 'no_save_optimizer_state': False, 'best_checkpoint_metric': 'loss', 'maximize_best_checkpoint_metric': False, 'patience': -1, 'checkpoint_suffix': '', 'checkpoint_shard_count': 1, 'load_checkpoint_on_all_dp_ranks': False, 'write_checkpoints_asynchronously': False, 'model_parallel_size': '${common.model_parallel_size}'}, 'bmuf': {'_name': None, 'block_lr': 1.0, 'block_momentum': 0.875, 'global_sync_iter': 50, 'warmup_iterations': 500, 'use_nbm': False, 'average_sync': False, 'distributed_world_size': '${distributed_training.distributed_world_size}'}, 'generation': {'_name': None, 'beam': 5, 'nbest': 1, 'max_len_a': 0.0, 'max_len_b': 200, 'min_len': 1, 'match_source_len': False, 'unnormalized': False, 'no_early_stop': False, 'no_beamable_mm': False, 'lenpen': 1.0, 'unkpen': 0.0, 'replace_unk': None, 'sacrebleu': False, 'score_reference': False, 'prefix_size': 0, 'no_repeat_ngram_size': 0, 'sampling': False, 'sampling_topk': -1, 'sampling_topp': -1.0, 'constraints': None, 'temperature': 1.0, 'diverse_beam_groups': -1, 'diverse_beam_strength': 0.5, 'diversity_rate': -1.0, 'print_alignment': None, 'print_step': False, 'lm_path': None, 'lm_weight': 0.0, 'iter_decode_eos_penalty': 0.0, 'iter_decode_max_iter': 10, 'iter_decode_force_max_iter': False, 'iter_decode_with_beam': 1, 'iter_decode_with_external_reranker': False, 'retain_iter_history': False, 'retain_dropout': False, 'retain_dropout_modules': None, 'decoding_format': None, 'no_seed_provided': False, 'eos_token': None}, 'eval_lm': {'_name': None, 'output_word_probs': False, 'output_word_stats': False, 'context_window': 0, 'softmax_batch': 9223372036854775807}, 'interactive': {'_name': None, 'buffer_size': 0, 'input': '-'}, 'model': '???', 'task': {'_name': 'unpaired_audio_text', 'labels': 'phn', 'data': '/home/azureuser/fairseq1/inference_scripts/test_data/precompute_pca512_cls128_mean_pooled', 'sort_by_length': False, 'shuffle': False, 'text_data': ''}, 'criterion': None, 'optimizer': None, 'lr_scheduler': None, 'scoring': None, 'bpe': None, 'tokenizer': None, 'ema': {'_name': None, 'store_ema': False, 'ema_decay': 0.9999, 'ema_start_update': 0, 'ema_seed_model': None, 'ema_update_freq': 1, 'ema_fp32': False}}, 'lm_weight': 2.0, 'w2l_decoder': <DecoderType.VITERBI: 1>, 'kaldi_decoder_config': None, 'lexicon': None, 'lm_model': None, 'unit_lm': False, 'beam_threshold': 50.0, 'beam_size_token': 100.0, 'beam': 1500, 'nbest': 1, 'word_score': 1.0, 'unk_weight': -inf, 'sil_weight': 0.0, 'targets': 'wrd', 'results_path': '/home/azureuser/Speech_Patch/eval/env_eval_result_epochs_intel', 'post_process': 'silence', 'vocab_usage_power': 2.0, 'viterbi_transcript': None, 'min_lm_ppl': 0.0, 'min_vt_uer': 0.0, 'blank_weight': 0.0, 'blank_mode': 'set', 'sil_is_blank': False, 'unsupervised_tuning': False, 'is_ax': False, 'job_logging_cfg': {'version': 1, 'formatters': {'simple': {'format': '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'}}, 'handlers': {'console': {'class': 'logging.StreamHandler', 'formatter': 'simple', 'stream': 'ext://sys.stdout'}, 'file': {'class': 'logging.FileHandler', 'formatter': 'simple', 'filename': 'w2vu_generate.log'}}, 'root': {'level': 'INFO', 'handlers': ['console', 'file']}, 'disable_existing_loggers': False}}
-[2022-09-30 04:54:34,379][__main__][INFO] - | loading model(s) from /home/azureuser/Speech_Patch/output_models_intel/gan_out/checkpoint_last.pt
+#### Training Output with Intel® Extension for PyTorch\*
+
+```
+[2023-11-28 22:49:35,253][fairseq_cli.train][INFO] - Wav2vec_U(
+  (discriminator): Discriminator(
+    (net): Sequential(
+      (0): Conv1d(54, 384, kernel_size=(6,), stride=(1,), padding=(5,))
+      (1): SamePad()
+      (2): Dropout(p=0.0, inplace=False)
+      (3): Sequential(
+        (0): Conv1d(384, 384, kernel_size=(6,), stride=(1,), padding=(5,))
+        (1): SamePad()
+        (2): Dropout(p=0.0, inplace=False)
+        (3): GELU(approximate='none')
+      )
+      (4): Conv1d(384, 1, kernel_size=(6,), stride=(1,), padding=(5,))
+      (5): SamePad()
+    )
+  )
+  (segmenter): JoinSegmenter()
+  (generator): Generator(
+    (dropout): Dropout(p=0.1, inplace=False)
+    (proj): Sequential(
+      (0): TransposeLast()
+      (1): Conv1d(512, 54, kernel_size=(4,), stride=(1,), padding=(2,), bias=False)
+      (2): TransposeLast()
+    )
+  )
+)
+[2023-11-28 22:49:35,253][fairseq_cli.train][INFO] - task: UnpairedAudioText
+[2023-11-28 22:49:35,253][fairseq_cli.train][INFO] - model: Wav2vec_U
+[2023-11-28 22:49:35,253][fairseq_cli.train][INFO] - criterion: ModelCriterion
+[2023-11-28 22:49:35,253][fairseq_cli.train][INFO] - num. shared model params: 1,122,817 (num. trained: 1,122,817)
+[2023-11-28 22:49:35,253][fairseq_cli.train][INFO] - num. expert model params: 0 (num. trained: 0)
+Time taken for initial training and building model ====================================== 0.015325307846069336
+[2023-11-28 22:49:35,255][unsupervised.data.extracted_features_dataset][INFO] - loaded 782, skipped 0 samples
+[2023-11-28 22:49:35,255][unsupervised.tasks.unpaired_audio_text][INFO] - split valid has unpaired text? False
+cpu ? :True
+cpu
+[2023-11-28 22:49:35,257][fairseq_cli.train][INFO] - training on 1 devices (GPUs/TPUs)
+[2023-11-28 22:49:35,257][fairseq_cli.train][INFO] - max tokens per device = None and max sentences per device = 160
+[2023-11-28 22:49:35,257][fairseq.trainer][INFO] - Preparing to load checkpoint //ai-transcription/output/model/checkpoint_last.pt
+{'lr': 0.0005, 'betas': [0.5, 0.98], 'eps': 1e-06, 'weight_decay': 0.0001}
+{'lr': 0.0004, 'betas': [0.5, 0.98], 'eps': 1e-06, 'weight_decay': 0.0}
+[2023-11-28 22:49:35,376][fairseq.trainer][INFO] - Loaded checkpoint //ai-transcription/output/model/checkpoint_last.pt (epoch 51 @ 650 updates)
+[2023-11-28 22:49:35,377][fairseq.trainer][INFO] - loading train data for epoch 51
+[2023-11-28 22:49:35,378][unsupervised.data.extracted_features_dataset][INFO] - loaded 1921, skipped 0 samples
+[2023-11-28 22:49:35,378][unsupervised.tasks.unpaired_audio_text][INFO] - split train has unpaired text? True
+[2023-11-28 22:49:35,379][fairseq.data.data_utils][INFO] - loaded 101 examples from: //ai-transcription/src/fairseq/prepared_text/phones/train
+True
+START PATCHING with IPEX
+=====IPEX Patching Done=======
+[2023-11-28 22:49:35,451][fairseq_cli.train][INFO] - done training in 0.0 seconds
+Current end  time................................... : 22:49:36
+668
+end time >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: 10:49:36 PM
+```
+
+#### Inference Output with Intel® Neural Compressor and Intel® Extension for PyTorch\*
+
+```
 ======IPEX Patching Done========
-[2022-09-30 04:54:34,488][root][WARNING] - Force convert framework model to neural_compressor model.
-[2022-09-30 04:54:34,493][root][INFO] - Generate a fake evaluation function.
-[2022-09-30 04:54:34,572][root][INFO] - Pass query framework capability elapsed time: 37.03 ms
-[2022-09-30 04:54:34,574][root][INFO] - Get FP32 model baseline.
-[2022-09-30 04:54:34,574][root][INFO] - Save tuning history to /home/azureuser/fairseq1/outputs/2022-09-30/04-54-34/nc_workspace/2022-09-30_04-54-32/./history.snapshot.
-[2022-09-30 04:54:34,580][root][INFO] - FP32 baseline is: [Accuracy: 1.0000, Duration (seconds): 0.0000]
-[2022-09-30 04:54:34,598][root][INFO] - Fx trace of the entire model failed, We will conduct auto quantization
-[2022-09-30 04:54:34,778][root][INFO] - |********Mixed Precision Statistics*******|
-[2022-09-30 04:54:34,778][root][INFO] - +------------------------+--------+-------+
-[2022-09-30 04:54:34,778][root][INFO] - |        Op Type         | Total  |  INT8 |
-[2022-09-30 04:54:34,778][root][INFO] - +------------------------+--------+-------+
-[2022-09-30 04:54:34,778][root][INFO] - |  quantize_per_tensor   |   4    |   4   |
-[2022-09-30 04:54:34,778][root][INFO] - |         Conv1d         |   4    |   4   |
-[2022-09-30 04:54:34,779][root][INFO] - |       dequantize       |   4    |   4   |
-[2022-09-30 04:54:34,779][root][INFO] - +------------------------+--------+-------+
-[2022-09-30 04:54:34,779][root][INFO] - Pass quantize model elapsed time: 197.75 ms
-[2022-09-30 04:54:34,779][root][INFO] - Tune 1 result is: [Accuracy (int8|fp32): 1.0000|1.0000, Duration (seconds) (int8|fp32): 0.0000|0.0000], Best tune result is: [Accuracy: 1.0000, Duration (seconds): 0.0000]
-[2022-09-30 04:54:34,779][root][INFO] - |**********************Tune Result Statistics**********************|
-[2022-09-30 04:54:34,779][root][INFO] - +--------------------+----------+---------------+------------------+
-[2022-09-30 04:54:34,779][root][INFO] - |     Info Type      | Baseline | Tune 1 result | Best tune result |
-[2022-09-30 04:54:34,779][root][INFO] - +--------------------+----------+---------------+------------------+
-[2022-09-30 04:54:34,779][root][INFO] - |      Accuracy      | 1.0000   |    1.0000     |     1.0000       |
-[2022-09-30 04:54:34,779][root][INFO] - | Duration (seconds) | 0.0000   |    0.0000     |     0.0000       |
-[2022-09-30 04:54:34,779][root][INFO] - +--------------------+----------+---------------+------------------+
-[2022-09-30 04:54:34,779][root][INFO] - Save tuning history to /home/azureuser/fairseq1/outputs/2022-09-30/04-54-34/nc_workspace/2022-09-30_04-54-32/./history.snapshot.
-[2022-09-30 04:54:34,785][root][INFO] - Specified timeout or max trials is reached! Found a quantized model which meet accuracy goal. Exit.
-[2022-09-30 04:54:34,787][root][INFO] - Save deploy yaml to /home/azureuser/fairseq1/outputs/2022-09-30/04-54-34/nc_workspace/2022-09-30_04-54-32/deploy.yaml
-[2022-09-30 04:54:34,793][root][INFO] - Save config file and weights of quantized model to /home/azureuser/fairseq1/inc_output.
+Executing INC
+2023-11-28 23:45:23 [WARNING] Force convert framework model to neural_compressor model.
+2023-11-28 23:45:23 [INFO] Because both eval_dataloader_cfg and user-defined eval_func are None, automatically setting 'tuning.exit_policy.performance_only = True'.
+2023-11-28 23:45:23 [INFO] The cfg.tuning.exit_policy.performance_only is: True
+2023-11-28 23:45:23 [INFO] Attention Blocks: 0
+2023-11-28 23:45:23 [INFO] FFN Blocks: 0
+2023-11-28 23:45:23 [INFO] Pass query framework capability elapsed time: 62.18 ms
+2023-11-28 23:45:23 [INFO] Adaptor has 2 recipes.
+2023-11-28 23:45:23 [INFO] 0 recipes specified by user.
+2023-11-28 23:45:23 [INFO] 0 recipes require future tuning.
+2023-11-28 23:45:23 [INFO] Neither evaluation function nor metric is defined. Generate a quantized model with default quantization configuration.
+2023-11-28 23:45:23 [INFO] Force setting 'tuning.exit_policy.performance_only = True'.
+2023-11-28 23:45:23 [INFO] Fx trace of the entire model failed, We will conduct auto quantization
+2023-11-28 23:45:23 [INFO] |******Mixed Precision Statistics******|
+2023-11-28 23:45:23 [INFO] +---------------------+----------------+
+2023-11-28 23:45:23 [INFO] |       Op Type       |     Total      |
+2023-11-28 23:45:23 [INFO] +---------------------+----------------+
+2023-11-28 23:45:23 [INFO] +---------------------+----------------+
+2023-11-28 23:45:23 [INFO] Pass quantize model elapsed time: 157.54 ms
+2023-11-28 23:45:23 [INFO] Save tuning history to /ai-transcription/src/fairseq/outputs/2023-11-28/23-45-19/nc_workspace/2023-11-28_23-45-22/./history.snapshot.
+2023-11-28 23:45:23 [INFO] Specified timeout or max trials is reached! Found a quantized model which meet accuracy goal. Exit.
+2023-11-28 23:45:23 [INFO] Save deploy yaml to /ai-transcription/src/fairseq/outputs/2023-11-28/23-45-19/nc_workspace/2023-11-28_23-45-22/deploy.yaml
+2023-11-28 23:45:23 [INFO] Save config file and weights of quantized model to //ai-transcription/src/fairseq/inc_output.
 Batch Size used here is  1
-Average Inference Time Taken Fp32 -->  0.0005000114440917968
+Average Inference Time Taken Fp32 -->  0.0003211736679077148
+Average Inference Time Taken Int8 -->  0.0002476215362548828
+[2023-11-28 23:45:23,595][__main__][INFO] -
+
+ Evaluating FP32 Model
+
+[2023-11-28 23:45:23,601][unsupervised.data.extracted_features_dataset][INFO] - loaded 2620, skipped 0 samples
+[2023-11-28 23:45:23,601][unsupervised.tasks.unpaired_audio_text][INFO] - split test has unpaired text? False
+[2023-11-28 23:45:23,601][__main__][INFO] - | //ai-transcription/src/fairseq/prepared_audio/precompute_pca512_cls128_mean_pooled test 2620 examples
+[2023-11-28 23:45:33,511][__main__][INFO] -
+
+Evaluating INT8 Model
+
+[2023-11-28 23:45:33,516][unsupervised.data.extracted_features_dataset][INFO] - loaded 2620, skipped 0 samples
+[2023-11-28 23:45:33,517][unsupervised.tasks.unpaired_audio_text][INFO] - split test has unpaired text? False
+[2023-11-28 23:45:33,517][__main__][INFO] - | //ai-transcription/src/fairseq/prepared_audio/precompute_pca512_cls128_mean_pooled test 2620 examples
 ```
 
-## Performance Observations
+## Summary and Next Steps
 
-Here we can analyze the Inference gain observed in the Intel environment vs the Stock environment. The various batch sizes used are - 1,8,16,32,64 & 128 for both cases i.e. without and with numactl optimization.
+This reference kit presents a speech processing task in the form of an Automatic Speech Recognition (ASR) system that converts speech audio signals to phonemized text following an unsupervised adversarial training approach. The ASR system introduced in this project is oriented to be used as a tool to automate the generation of progress reports during and after Psychotherapy sessions, which could increase therapists productivity, allowing them to focus more on diligently caring for their patients instead of spent most of their times in manually creating exhaustive notes.
 
-#### Intel FP32 IPEX vs Stock FP32 Inference with numactl optimization: 
+Furthermore, this ASR solution leverages the optimizations given by Intel® Extension for PyTorch* and Intel® Neural Compressor to accelerate its training and inference processing capabilities while maintaining the accuracy.
 
-![image](assets/Inference_with_numactl.png)
+As next steps, the machine learning practitioners could adapt this ASR solution by using custom unlabeled datasets to perform adversarial training using Intel® Extension for PyTorch* and quantize the trained model with Intel® Neural Compressor. This reference kit could also be incorporated as an auxiliary tool to other psychotherapy methodologies with the aim to derive the most insightful and beneficial curse of action for the patient.
 
-Intel® PyTorch FP32 IPEX 1.12.300 offers an inference speed-up ranging between **1.92x** to **2.99x** compared to Stock FP32 PyTorch 1.11.0.
+## Learn More
+For more information about AI Transcription or to read about other relevant workflow examples, see these guides and software resources:
 
-## Performance Metric observation (WER) :
-Word Error Rate (WER) was used as a metric for Speech Recognition Inference Benchmarking experiments. Lesser WER was observed for the models trained with the higher number of epochs.
+- [Intel® Distribution for Python](https://www.intel.com/content/www/us/en/developer/tools/oneapi/distribution-for-python.html)
+- [Intel® AI Analytics Toolkit (AI Kit)](https://www.intel.com/content/www/us/en/developer/tools/oneapi/ai-analytics-toolkit.html)
+- [Intel® Extension for PyTorch\*](https://www.intel.com/content/www/us/en/developer/tools/oneapi/optimization-for-pytorch.html#gs.5vjhbw)
 
-## Key Takeaways:
-With Numactl optimization - Intel® PyTorch FP32 IPEX 1.12.300 offers an inference speed-up ranging between **1.92x** to **2.99x** compared to Stock FP32 PyTorch 1.11.0.
-
-## Conclusion
-To build a speech-to-text solution at scale, Data Scientists will need to train models for substantial datasets and run inference more frequently. The ability to accelerate training will allow them to train more frequently and achieve better accuracy. Besides training, faster speed in inference will allow them to run AI-based Transcribe in real-time scenarios more frequently. This task requires a lot of training and retraining, making the job tedious. The ability to get it faster speed will accelerate the ML pipeline. This reference kit implementation provides a performance-optimized guide around speech-to-text use cases that can be easily scaled across similar use cases.
-
-### Notes
-***Please see this data set's applicable license for terms and conditions. Intel® does not own the rights to this data set and does not confer any rights to it.***
-
-### Notices & Disclaimers
-Performance varies by use, configuration and other factors. Learn more on the [Performance Index site](https://edc.intel.com/content/www/us/en/products/performance/benchmarks/overview/). 
-Performance results are based on testing as of dates shown in configurations and may not reflect all publicly available updates.  See backup for configuration details.  No product or component can be absolutely secure. 
-Your costs and results may vary. 
-Intel technologies may require enabled hardware, software or service activation.
-© Intel Corporation.  Intel, the Intel logo, and other Intel marks are trademarks of Intel Corporation or its subsidiaries.  Other names and brands may be claimed as the property of others.  
-
+## Support
+If you have questions or issues about this workflow, want help with troubleshooting, want to report a bug or submit enhancement requests, please submit a GitHub issue.
 
 ## Appendix
+\*Names and brands that may be claimed as the property of others. [Trademarks](https://www.intel.com/content/www/us/en/legal/trademarks.html).
 
-**Date Testing Performed**: October 2022 
+### Disclaimer
 
-**Configuration Details and Workload Setup**: Azure D8v5 (Intel® Xeon® Platinum 8370C CPU @ 2.80GHz), 1 Socket, 4 Cores per Socket, 2 Threads per Core, Turbo:On, Total Memory: 64 GB, OS: Ubuntu 20.04, Kernel: Linux 5.15.0-1019-azure. Framework/Toolkit: Fairseq, wave2vec, Pykaldi, KenLM, rVAD, Python -v3.8.10, PyTorch - v1.11.0, Intel® Extension for PyTorch - v1.12.300, Intel® Neural Compressor - v1.14.1. Dataset size: 5000 voice samples. Model: wav2vec. Batch size for prediction time benchmark: 1,8,16,32,64 and 128. Precision: FP32. 
+To the extent that any public or non-Intel datasets or models are referenced by or accessed using tools or code on this site those datasets or models are provided by the third party indicated as the content source. Intel does not create the content and does not warrant its accuracy or quality. By accessing the public content, or using materials trained on or with such content, you agree to the terms associated with that content and that your use complies with the applicable license.
 
-**Testing performed by** Intel Corporation
+Intel expressly disclaims the accuracy, adequacy, or completeness of any such public content, and is not liable for any errors, omissions, or defects in the content, or for any reliance on the content. Intel is not liable for any liability or damages relating to your use of public content.
 
-### Experimental Setup 
+### References
 
-|**Optimized for**:                 |**Description**
-| :---                              | :---
-| Platform                          |Standard_D8_v5 <br>Ubuntu 20.04
-| Hardware                          | Intel IceLake CPU<br>Disk Space - minimum 64 GB
-| Software                          | Intel® oneAPI AI Analytics Toolkit, Intel® Distribution for Python, Intel® Extension for PyTorch, Intel Neural Compressor
-| What you will learn               | Intel oneAPI performance advantage over the stock versions
+<a id="lcsw_2021">[1] LCSW, K. D. (2021, July 20). Mental Health Progress Notes: Best Practices and Templates. Foothold Technology. https://footholdtechnology.com/news/mental-health-progress-notes/
 
+<a id="malik_2020">[2] Malik, M., Malik, M. K., Mehmood, K., & Makhdoom, I. (2020). Automatic speech recognition: a survey. Multimedia Tools and Applications. https://doi.org/10.1007/s11042-020-10073-7
 
+‌<a id="lu_2019">[3] Lu, X., Li, S., & Fujimoto, M. (2019). Automatic Speech Recognition. SpringerBriefs in Computer Science, 21–38. https://doi.org/10.1007/978-981-15-0595-9_2
 
-### Troubleshooting
-Since this reference kit involves installing many Python and C++ libraries, we have listed some of the issues that might occur during the Data pre-processing steps or environment creation steps. Also, a resolution is provided against the error. 
-If the users encounter these errors, they can refer to this section to resolve the issues by themselves:
+‌<a id="mehrish_2023">[4] Mehrish, A., Majumder, N., Bharadwaj, R., Mihalcea, R., & Poria, S. (2023). A review of deep learning techniques for speech processing. Information Fusion, 101869. https://doi.org/10.1016/j.inffus.2023.101869
 
-|Step	|Error |	Resolution
-| :---                       | :---                | :---  
-|Pykaldi installation	|"Warning: IRSTLM is not installed by default anymore. If you need IRSTLM <br> Warning: use the script extras/install_irstlm.sh <br> All done OK. <br> Configuring KALDI to use MKL.Checking compiler g++ ...Checking OpenFst library in /home/sri/oneAPI-SpeechToText-PyTorch/src/pykaldi/tools/kaldi/tools/openfst-1.6.7 ...Performing OS specific configuration ...On Linux: Checking for linear algebra header files ...Configuring MKL library directory: ***configure failed: Could not find the MKL library directory.Please use the switch --mkl-root and/or --mkl-libdir if you have MKL installed, or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower) |Re-run the below steps in PyKaldi installation steps:<br> sudo chmod 775 install_mkl.sh <br>./install_mkl.sh<br> ./install_kaldi.sh<br> Once the installation is successful, the message will be displayed ""Done installing Kaldi."""
-|Setting Enviornment variables:<br>export LD_LIBRARY_PATH="<absolute path of the miniconda installation>/lib:/<absolute path of the pykaldi installation>/tools/kaldi/tools/openfst-1.6.7/lib:/<absolute path of the pykaldi installation>/tools/kaldi/src/lib"| Path ''absolute path of the pykaldi installation>/tools/kaldi/src/lib" not found | Check the PyKaldi installation steps|
-|Vads file generation:<br>python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/vads.py -r $RVAD_ROOT <./preprocessed_level1/train.tsv> ./preprocessed_level1/train.vads | ModuleNotFoundError: No module named 'scipy' | pip install scipy==1.8.1|
-|python $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/remove_silence.py --tsv ./preprocessed_level1/train.tsv --vads ./preprocessed_level1/train.vads --out ./removed_silence_data |ModuleNotFoundError: No module named 'torch' | pip install torch==1.11.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu <br> pip install torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cpu|
-|Prepare audio Step <br> zsh $FAIRSEQ_ROOT/examples/wav2vec/unsupervised/scripts/prepare_audio.sh ./preprocessed_level2 ./prepared_audio wav2vec_small.pt | Command 'zsh' not found | sudo apt install zsh|
-| Step 17 - During the execution of Preparation of Text Data | ModuleNotFoundError: No module named 'fasttext'| conda install -c conda-forge fasttext|
-| Environment installation issues | This issue might be triggered because of one or more packages. Providing one sample error: <br> CondaEncException: Pip failed| 1.Deactivate all the environments 2. <br>pip cache purge <br> 3. rm -r ~/.cache/pip/http/ <br> 4. rm -r ~/.cache/pip/wheels/ <br> 5. Remove the envrionment that created the error -for example speech-intel & run -  conda env remove -n speech-intel <br> 6. conda env create -f env/intel/speech-intel.yml
-|While running inference with Numactl| Command 'numactl' not found| sudo apt install numactl|
-| While running Inference| python: can't open file '/examples/wav2vec/unsupervised/w2vu_generate.py': [Errno 2] No such file or directory| Set the Envrionmental varibles:<br> export FAIRSEQ_ROOT="<absolute path of clonned fairseq>" <br> export PYTHONPATH=\$PYTHONPATH:\$FAIRSEQ_ROOT/examples|
+‌<a id="baevsky_2021">[5] Baevski, A., Hsu, W., Conneau, A., & Auli, M. (2021). Unsupervised Speech Recognition. https://proceedings.neurips.cc/paper/2021/file/ea159dc9788ffac311592613b7f71fbb-Paper.pdf 
 
+‌<a id="liu_2023">[6] Liu, A., Hsu, W.N., Auli, M., & Baevski, A. (2023). Towards End-to-End Unsupervised Speech Recognition. In 2022 IEEE Spoken Language Technology Workshop (SLT) (pp. 221-228).
+
+‌<a id="baevsky_2021">[7] Baevski, A., Zhou, H., Mohamed, A., & Auli, M. (2020). wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations. https://arxiv.org/pdf/2006.11477.pdf
+
+‌<a id="goldhahn_2012">[8] D. Goldhahn, T. Eckart & U. Quasthoff: Building Large Monolingual Dictionaries at the Leipzig Corpora Collection: From 100 to 200 Languages (2012). Proceedings of the 8th International Language Resources and Evaluation (LREC'12). http://www.lrec-conf.org/proceedings/lrec2012/pdf/327_Paper.pdf  
+
+‌<a id="joulinb_2016">[9] Joulin, A., Grave, E., Bojanowski, P., & Mikolov, T. (2016). Bag of Tricks for Efficient Text Classification. arXiv preprint arXiv:1607.01759. https://arxiv.org/abs/1607.01759 
+
+‌<a id="joulinf_2016">[10] Joulin, A., Grave, E., Bojanowski, P., Douze, M., Jegou, H., & Mikolov, T. (2016). FastText.zip: Compressing text classification models. arXiv preprint arXiv:1612.03651. https://arxiv.org/abs/1612.03651 

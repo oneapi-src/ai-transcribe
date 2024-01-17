@@ -1,0 +1,34 @@
+name: ai_transcription_intel
+channels:
+  - intel
+  - conda-forge
+dependencies:
+  - intelpython3_core=2024.0.0
+  - python=3.10.13
+  - libblas=3.9.0
+  - libcblas=3.9.0
+  - libfaiss=1.7.4
+  - libfaiss-avx2=1.7.4
+  - sqlite=3.41.1
+  - gperftools=2.10
+  - pip=23.3.1
+  - pip:
+    - --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/cpu/us/ 
+    - torch==2.0.1
+    - torchaudio==2.0.2
+    - torchvision==0.15.2
+    - intel-extension-for-pytorch==2.0.100
+    - neural-compressor==2.3.1
+    - numpy==1.23.1
+    - pyparsing==3.1.1
+    - ninja==1.11.1.1
+    - npy-append-array==0.9.16
+    - psutil==5.9.6
+    - scikit-learn==1.3.2
+    - Oauthlib==3.2.2
+    - soundfile==0.12.1
+    - phonemizer==3.2.1
+    - faiss-cpu==1.7.4
+    - editdistance==0.6.2
+    - fasttext-wheel==0.9.2
+    - tensorboardX==2.6.2.2

@@ -2,7 +2,7 @@
 
 ### License
 
-AI Transcribe is licensed under the terms in [LICENSE]<https://github.com/oneapi-src/ai-transcribe/blob/main/LICENSE>. By contributing to the project, you agree to the license and copyright terms therein and release your contribution under these terms.
+AI Transcribe is licensed under the terms in [LICENSE](https://github.com/oneapi-src/ai-transcribe/blob/main/LICENSE). By contributing to the project, you agree to the license and copyright terms therein and release your contribution under these terms.
 
 ### Sign your work
 

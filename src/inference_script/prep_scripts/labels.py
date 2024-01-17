@@ -1,11 +1,10 @@
-# Copyright (C) 2022 Intel Corporation
+# Copyright (C) 2024 Intel Corporation
 # SPDX-License-Identifier: BSD-3-Clause
 # Usage: python labels.py --jobs 64 --tsv <path to train.tsv>train.tsv --output-dir <destination dir> --output-name test --txt-dir  # noqa: E114,E116,W291,E501
 # pylint: disable=C0114,W1514,W0611,E401
 
 import argparse
 import os
-import re  # noqa: F401
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
